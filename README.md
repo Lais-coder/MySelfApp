@@ -1,3 +1,94 @@
+# MYF'SP - Projeto Nutricional (React + Vite + Tailwind)
+
+Aplicação frontend em React com um backend simples em Express/SQLite para receber e armazenar respostas do questionário.
+
+## Estrutura resumida
+
+- `src/` - código React (componentes, páginas, estilos)
+- `server/` - backend Express (endpoints, banco SQLite, uploads)
+
+## Rodando o frontend
+
+1. Instale dependências e rode o dev server:
+```bash
+npm install
+npm run dev
+```
+Por padrão o Vite abre em `http://localhost:5173` (ou outra porta disponível).
+
+Se o frontend precisar enviar dados ao backend, crie um arquivo `.env` na raiz com:
+```
+VITE_API_URL=http://localhost:4000
+VITE_N8N_WEBHOOK_URL=   # opcional, caso use n8n direto
+```
+
+Reinicie o frontend após adicionar variáveis.
+
+## Rodando o backend (servidor local)
+
+1. Vá para a pasta do servidor e instale dependências:
+```bash
+cd server
+npm install
+```
+
+2. Copie o arquivo de exemplo de variáveis e ajuste se necessário:
+```bash
+cp .env.example .env
+# editar .env para configurar PORT, DB_PATH, UPLOAD_DIR se desejar
+```
+
+3. Inicie o servidor:
+```bash
+npm run dev   # usa nodemon
+# ou
+npm start
+```
+
+Por padrão o servidor escuta em `http://localhost:4000`.
+
+### Criar usuário de teste
+No diretório `server` execute:
+```bash
+node create_test_user.js
+```
+Padrões: `username=testuser`, `password=Test@1234`, `email=testuser@example.com`. Use as variáveis de ambiente `TEST_USERNAME`, `TEST_PASSWORD`, `TEST_EMAIL` para customizar.
+
+### Endpoints principais
+
+- `POST /api/questionnaire` — Recebe `multipart/form-data` com um campo `payload` (JSON com os campos do questionário) e arquivos como `file_<campo>`; armazena entradas em SQLite e salva arquivos em `/server/uploads`.
+- `GET /api/questionnaire` — Lista envios salvos.
+- `POST /api/login` — Valida `{ username, password }` contra a tabela `users` (hash bcrypt).
+
+O banco SQLite padrão fica em `server/data.sqlite` (ou no caminho definido por `DB_PATH` no `.env`).
+
+## Integração com n8n / Planilhas
+
+- O frontend envia primeiro para `VITE_API_URL` (preferência). Se `VITE_API_URL` não estiver definido, pode enviar direto ao `VITE_N8N_WEBHOOK_URL`.
+- O backend também pode ser configurado para repassar dados ao n8n se necessário. Os arquivos chegam como `file_<campo>` e os demais campos ficam em `payload` (JSON). No n8n, parseie `payload` e utilize os arquivos conforme necessário para enviar para planilhas.
+
+## Testes rápidos (curl)
+
+- Testar login (exemplo):
+```bash
+curl -s -X POST http://localhost:4000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"Test@1234"}' | jq
+```
+
+- Listar envios:
+```bash
+curl http://localhost:4000/api/questionnaire | jq
+```
+
+## Observações e próximos passos
+
+- O `AuthContext` no frontend atualmente tem um `login` local — posso integrá-lo para chamar `/api/login` e manter o usuário autenticado.
+- Posso também adicionar proteção por JWT, paginação de envios, e exportação para Google Sheets diretamente via n8n.
+
+---
+
+Se quiser que eu execute a instalação do backend e crie o usuário de teste aqui, confirme que devo rodar `npm install` e `node create_test_user.js` no diretório `server`.
 # MYF'SP - Projeto Nutricional em React + Vite + Tailwind CSS
 
 Este é o projeto MYF'SP transformado de HTML/CSS puro para uma aplicação React moderna com Vite e Tailwind CSS.

@@ -1,4 +1,4 @@
-import { useState, useContext, createContext } from 'react'
+import { useState, useContext, createContext, useEffect } from 'react'
 
 // Criar contexto de autenticação
 export const AuthContext = createContext()
@@ -9,12 +9,37 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('user')
+      if (raw) {
+        setUser(JSON.parse(raw))
+      }
+    } catch (e) {
+      console.warn('Erro ao ler user do localStorage', e)
+    }
+  }, [])
+
   const login = async (username, password) => {
     setLoading(true)
     setError(null)
     try {
-      // Aqui você chamaria a API real
-      const userData = { username, email: `${username}@example.com` }
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const message = body.error || 'Credenciais inválidas'
+        setError(message)
+        throw new Error(message)
+      }
+
+      const data = await res.json()
+      const userData = data.user || { username }
       setUser(userData)
       localStorage.setItem('user', JSON.stringify(userData))
       return userData

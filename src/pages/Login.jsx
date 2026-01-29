@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -7,6 +8,7 @@ export default function Login() {
     password: ''
   })
   const navigate = useNavigate()
+  const { login, loading, error } = useAuth()
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -18,12 +20,17 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    // Aqui você implementaria a autenticação real
-    navigate('/profile')
+    ;(async () => {
+      try {
+        await login(formData.username, formData.password)
+        navigate('/profile')
+      } catch (err) {
+      }
+    })()
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-medium to-purple-darker p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-medium to-purple-50 p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 md:p-12">
         <h2 className="text-4xl font-marcellus text-center text-purple-lilac2 mb-8">Login</h2>
 
@@ -62,10 +69,14 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full py-3 bg-green-medium text-white text-lg font-bold rounded-lg hover:bg-green-dark transition-colors"
+            disabled={loading}
+            className="w-full py-3 bg-green-medium text-white text-lg font-bold rounded-lg hover:bg-green-dark transition-colors disabled:opacity-60"
           >
-            Entrar
+            {loading ? 'Entrando...' : 'Entrar'}
           </button>
+          {error && (
+            <p className="mt-4 text-center text-sm text-red-600">{error}</p>
+          )}
         </form>
 
         <div className="mt-8 pt-8 border-t border-gray-200 text-center">
