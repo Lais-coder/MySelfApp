@@ -1,5 +1,8 @@
 const bcrypt = require('bcryptjs')
-const { db, getUserByUsername, createUser } = require('./db')
+const { db, init, getUserByUsername, createUser } = require('./db')
+
+// Garantir que o DB e tabelas estejam inicializados
+init()
 
 async function createOrUpdateAdmin(username, password, email) {
   if (!username || !password) {

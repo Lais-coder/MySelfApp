@@ -1,9 +1,13 @@
+import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
-import { Coffee, Leaf, ForkKnife, HeartHandshake } from 'lucide-react'
+import { Coffee, Leaf, ForkKnife } from 'lucide-react'
 
 export default function FoodPlan() {
-  const mealPlan = [
+  // Inicializamos com null para saber que ainda está "carregando"
+  const [mealPlan, setMealPlan] = useState(null)
+
+  const defaultPlan = [
     {
       day: 'Segunda',
       meals: [
@@ -23,6 +27,50 @@ export default function FoodPlan() {
       ]
     },
   ]
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+        let currentUser = null
+        
+        try { 
+          currentUser = JSON.parse(localStorage.getItem('user') || 'null') 
+        } catch (e) { 
+          currentUser = null 
+        }
+
+        if (!currentUser?.username) {
+          setMealPlan(defaultPlan)
+          return
+        }
+
+        const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(currentUser.username)}/foodplan`)
+        
+        if (!res.ok) {
+          setMealPlan(defaultPlan)
+          return
+        }
+
+        const body = await res.json()
+
+        // Verificação Robusta: só aceita se body.data for um Array
+        if (body.data && Array.isArray(body.data)) {
+          setMealPlan(body.data)
+        } else {
+          console.warn("API não retornou um array em 'data'. Usando plano padrão.")
+          setMealPlan(defaultPlan)
+        }
+      } catch (err) {
+        console.error('Erro ao carregar plano:', err)
+        setMealPlan(defaultPlan)
+      }
+    }
+    load()
+  }, [])
+
+  // Definimos qual lista usar: a da API ou a padrão
+  const displayPlan = Array.isArray(mealPlan) ? mealPlan : defaultPlan
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100">
@@ -47,21 +95,22 @@ export default function FoodPlan() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {mealPlan.map((day) => (
-            <div key={day.day} className="bg-white rounded-xl shadow-md overflow-hidden transition hover:shadow-lg">
+          {displayPlan.map((day, dayIdx) => (
+            <div key={day.day || dayIdx} className="bg-white rounded-xl shadow-md overflow-hidden transition hover:shadow-lg">
               <div className="p-5 border-b">
                 <h2 className="text-2xl font-semibold text-slate-800">{day.day}</h2>
               </div>
 
               <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {day.meals.map((meal) => (
-                  <div key={meal.name} className="rounded-lg p-4 border bg-gradient-to-br from-white to-slate-50">
+                {/* Adicionada proteção opcional ?. antes do map de meals */}
+                {day.meals?.map((meal, mealIdx) => (
+                  <div key={meal.name || mealIdx} className="rounded-lg p-4 border bg-gradient-to-br from-white to-slate-50">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-bold text-gray-800">{meal.name}</h3>
-                      <span className="text-xs text-gray-500">{meal.items.length} itens</span>
+                      <span className="text-xs text-gray-500">{meal.items?.length || 0} itens</span>
                     </div>
                     <ul className="text-sm text-gray-600 space-y-2">
-                      {meal.items.map((item, idx) => (
+                      {meal.items?.map((item, idx) => (
                         <li key={idx} className="flex items-start gap-3">
                           <span className="inline-block w-2 h-2 mt-2 rounded-full bg-[#8b5cf6]" />
                           <span>{item}</span>

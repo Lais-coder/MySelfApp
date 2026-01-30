@@ -5,7 +5,8 @@ const path = require('path')
 const fs = require('fs')
 const multer = require('multer')
 
-const { init, insertSubmission, listSubmissions, createUser, getUserByUsername, updateUserQuestionnaire, getUserQuestionnaire, updateUserFields, listUsers, getCheckinsCounts, addDailyCheckin, getDailyCheckins, getDailyCheckinsForMonth } = require('./db')
+const { init, insertSubmission, listSubmissions, createUser, getUserByUsername, updateUserQuestionnaire, getUserQuestionnaire, updateUserFields, listUsers, getCheckinsCounts, addDailyCheckin, getDailyCheckins, getDailyCheckinsForMonth, setUserFoodPlan, getUserFoodPlan } = require('./db')
+const { db } = require('./db')
 const bcrypt = require('bcryptjs')
 
 const PORT = process.env.PORT || 4000
@@ -238,6 +239,45 @@ app.put('/api/user/:username', async (req, res) => {
   }
 })
 
+// Atualizar plano alimentar de um usuário (admin pode atualizar outros)
+app.put('/api/user/:username/foodplan', async (req, res) => {
+  try {
+    const target = req.params.username
+    const plan = req.body.plan || {}
+    if (!target) return res.status(400).json({ error: 'username alvo é obrigatório' })
+
+    // quem está solicitando (pode ser o próprio usuário ou admin)
+    const caller = req.query.username || req.body.username || req.headers['x-username']
+    if (!caller) return res.status(401).json({ error: 'username do solicitante é obrigatório' })
+
+    // se o caller for diferente do target, requerer privilégios de admin
+    if (caller !== target) {
+      const userCaller = await getUserByUsername(caller)
+      if (!userCaller) return res.status(401).json({ error: 'Usuário solicitante não encontrado' })
+      if (!userCaller.is_admin || Number(userCaller.is_admin) !== 1) return res.status(403).json({ error: 'Apenas administradores podem alterar plano de outro usuário' })
+    }
+
+    await setUserFoodPlan(target, plan)
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Erro ao atualizar food plan:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Obter plano alimentar de um usuário
+app.get('/api/user/:username/foodplan', async (req, res) => {
+  try {
+    const target = req.params.username
+    if (!target) return res.status(400).json({ error: 'username é obrigatório' })
+    const plan = await getUserFoodPlan(target)
+    res.json({ success: true, data: plan || {} })
+  } catch (err) {
+    console.error('Erro ao recuperar food plan:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 // Rotas administrativas básicas (protegidas por isAdmin)
 app.get('/api/admin/users', isAdmin, async (req, res) => {
   try {
@@ -271,6 +311,33 @@ app.get('/api/admin/user/:username/checkins', isAdmin, async (req, res) => {
     res.json({ success: true, data: checkins.map(c => c.check_in_date) })
   } catch (err) {
     console.error('Erro ao recuperar checkins do usuário:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Criar usuário admin via painel (apenas admin pode chamar)
+app.post('/api/admin/create-user', isAdmin, async (req, res) => {
+  try {
+    const { username, password, email } = req.body || {}
+    if (!username || !password) return res.status(400).json({ error: 'username e password são obrigatórios' })
+
+    const existing = await getUserByUsername(username)
+    const hash = await bcrypt.hash(password, 10)
+    if (existing) {
+      // atualiza senha e marca como admin
+      db.run('UPDATE users SET password = ?, email = ?, is_admin = 1 WHERE username = ?', [hash, email || existing.email || null, username], function (err) {
+        if (err) return res.status(500).json({ error: err.message })
+        return res.json({ success: true, message: 'Usuário existente atualizado e promovido a admin' })
+      })
+    } else {
+      // insere com is_admin = 1
+      db.run('INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, 1)', [username, email || null, hash], function (err) {
+        if (err) return res.status(500).json({ error: err.message })
+        return res.json({ success: true, message: 'Usuário admin criado' })
+      })
+    }
+  } catch (err) {
+    console.error('Erro ao criar admin:', err)
     res.status(500).json({ error: err.message })
   }
 })

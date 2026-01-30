@@ -95,6 +95,30 @@ const updateUserQuestionnaire = (username, questionnaireData) => {
   })
 }
 
+const setUserFoodPlan = (username, planObj) => {
+  return new Promise((resolve, reject) => {
+    const stmt = db.prepare('UPDATE users SET food_plan = ? WHERE username = ?')
+    stmt.run(JSON.stringify(planObj || {}), username, function (err) {
+      if (err) return reject(err)
+      resolve({ success: true })
+    })
+  })
+}
+
+const getUserFoodPlan = (username) => {
+  return new Promise((resolve, reject) => {
+    db.get('SELECT food_plan FROM users WHERE username = ?', [username], (err, row) => {
+      if (err) return reject(err)
+      if (!row) return resolve(null)
+      try {
+        resolve(JSON.parse(row.food_plan || '{}'))
+      } catch (e) {
+        resolve({})
+      }
+    })
+  })
+}
+
 const getUserQuestionnaire = (username) => {
   return new Promise((resolve, reject) => {
     db.get('SELECT questionnaire_data FROM users WHERE username = ?', [username], (err, row) => {
@@ -208,5 +232,7 @@ module.exports = {
   getCheckinsCounts,
   addDailyCheckin,
   getDailyCheckins,
-  getDailyCheckinsForMonth
+  getDailyCheckinsForMonth,
+  setUserFoodPlan,
+  getUserFoodPlan
 }
