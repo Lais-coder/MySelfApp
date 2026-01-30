@@ -10,7 +10,9 @@ import {
   Ban, 
   Moon, 
   Edit3, 
-  LogOut 
+  LogOut,
+  Check,
+  X
 } from 'lucide-react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
@@ -20,6 +22,7 @@ export default function Profile() {
   const [userAnswers, setUserAnswers] = useState({})
   const [userData, setUserData] = useState(null)
   const [editing, setEditing] = useState(false)
+  const [editingField, setEditingField] = useState(null)
   const [form, setForm] = useState({ nome: '', idade: '', profissao: '', atividade_fisica: '' })
   const navigate = useNavigate()
 
@@ -137,6 +140,33 @@ export default function Profile() {
     }
   }
 
+  const handleSaveField = async (field) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+      const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+      if (!currentUser?.username) return
+
+      const payload = { [field]: form[field] }
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(currentUser.username)}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      })
+      if (!res.ok) throw new Error('Erro ao salvar campo')
+
+      // atualiza estado local apenas do campo
+      setUserAnswers(prev => ({ ...prev, [field]: form[field] }))
+      if (field === 'nome') setUserData(prev => ({ ...prev, name: form.nome }))
+      setEditingField(null)
+    } catch (err) {
+      console.error('Erro ao salvar campo:', err)
+      alert('Erro ao salvar: ' + (err.message || ''))
+    }
+  }
+
+  const handleCancelField = (field) => {
+    setForm(prev => ({ ...prev, [field]: userAnswers[field] || (field === 'nome' ? (userData?.name || '') : '') }))
+    setEditingField(null)
+  }
+
   return (
     
     <div className="min-h-screen bg-[#f7faff] font-marcellus text-[#333]">
@@ -145,7 +175,7 @@ export default function Profile() {
         <div className="bg-white p-5 rounded-[10px] shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
           
           {/* Header do Perfil (Igual ao CSS .profile-header) */}
-          <div className="flex items-center mb-5 justify-between">
+          <div className="flex items-center mb-5 j">
             <div className="w-[100px] h-[100px] bg-[#e0e8f0] rounded-full flex items-center justify-center text-4xl font-bold text-[#999] mr-5">
               {userData?.name ? userData.name[0].toUpperCase() : 'U'}
             </div>
@@ -156,27 +186,6 @@ export default function Profile() {
               <p className="m-0 text-base mt-1">
                 <a href="#" className="text-[#00796b] no-underline font-bold hover:underline">Segue 0</a> · <a href="#" className="text-[#00796b] no-underline font-bold hover:underline">Tem 0 seguidores</a>
               </p>
-            </div>
-            <div className="ml-6 flex items-center gap-3">
-              {!editing ? (
-                <button onClick={handleEdit} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#34d399] to-[#10b981] text-white rounded-full font-semibold hover:scale-[1.02] transition-transform">
-                  <Edit3 size={16} />
-                  <span>Editar perfil</span>
-                </button>
-              ) : (
-                <>
-                  <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-[#0ea5a3] text-white rounded-full font-semibold hover:brightness-95 transition-all">
-                    <Edit3 size={16} />
-                    <span>Salvar</span>
-                  </button>
-                  <button onClick={handleCancelEdit} className="px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-full font-semibold">Cancelar</button>
-                </>
-              )}
-
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-full font-semibold hover:opacity-95">
-                <LogOut size={16} />
-                <span>Sair</span>
-              </button>
             </div>
           </div>
 
@@ -214,11 +223,20 @@ export default function Profile() {
                 <User className="text-[#40804b] mr-[15px]" size={28} />
                 <h3 className="m-0 text-xl text-[#40804b] font-semibold">Nome Completo</h3>
               </div>
-              <div className="w-1/2 text-right">
-                {!editing ? (
-                  <p className="m-0 text-gray-700 font-medium">{userAnswers.nome || userData?.name || '---'}</p>
+              <div className="w-1/2 text-right flex items-center justify-end gap-2">
+                {(!editing && editingField !== 'nome') ? (
+                  <>
+                    <p className="m-0 text-gray-700 font-medium">{userAnswers.nome || userData?.name || '---'}</p>
+                    <button onClick={() => setEditingField('nome')} className="ml-2 p-1 text-gray-500 hover:text-gray-800">
+                      <Edit3 size={16} />
+                    </button>
+                  </>
                 ) : (
-                  <input name="nome" value={form.nome} onChange={handleChange} className="w-full p-2 border rounded-md text-right" />
+                  <div className="flex items-center gap-2">
+                    <input name="nome" value={form.nome} onChange={handleChange} className="w-full p-2 border rounded-md text-right" />
+                    <button onClick={() => handleSaveField('nome')} className="p-1 text-green-600 hover:text-green-800"><Check size={18} /></button>
+                    <button onClick={() => handleCancelField('nome')} className="p-1 text-red-500 hover:text-red-700"><X size={18} /></button>
+                  </div>
                 )}
               </div>
             </div>
@@ -229,11 +247,20 @@ export default function Profile() {
                 <Calendar className="text-[#40804b] mr-[15px]" size={28} />
                 <h3 className="m-0 text-xl text-[#40804b] font-semibold">Idade</h3>
               </div>
-              <div className="w-1/2 text-right">
-                {!editing ? (
-                  <p className="m-0 text-gray-700 font-medium">{userAnswers.idade || '---'} anos</p>
+              <div className="w-1/2 text-right flex items-center justify-end gap-2">
+                {(!editing && editingField !== 'idade') ? (
+                  <>
+                    <p className="m-0 text-gray-700 font-medium">{userAnswers.idade || '---'} anos</p>
+                    <button onClick={() => setEditingField('idade')} className="ml-2 p-1 text-gray-500 hover:text-gray-800">
+                      <Edit3 size={16} />
+                    </button>
+                  </>
                 ) : (
-                  <input name="idade" value={form.idade} onChange={handleChange} className="w-24 p-2 border rounded-md text-right inline-block" />
+                  <div className="flex items-center gap-2">
+                    <input name="idade" value={form.idade} onChange={handleChange} className="w-24 p-2 border rounded-md text-right inline-block" />
+                    <button onClick={() => handleSaveField('idade')} className="p-1 text-green-600 hover:text-green-800"><Check size={18} /></button>
+                    <button onClick={() => handleCancelField('idade')} className="p-1 text-red-500 hover:text-red-700"><X size={18} /></button>
+                  </div>
                 )}
               </div>
             </div>
@@ -244,11 +271,20 @@ export default function Profile() {
                 <Scale className="text-[#40804b] mr-[15px]" size={28} />
                 <h3 className="m-0 text-xl text-[#40804b] font-semibold">Profissão</h3>
               </div>
-              <div className="w-1/2 text-right">
-                {!editing ? (
-                  <p className="m-0 text-gray-700 font-medium">{userAnswers.profissao || '---'}</p>
+              <div className="w-1/2 text-right flex items-center justify-end gap-2">
+                {(!editing && editingField !== 'profissao') ? (
+                  <>
+                    <p className="m-0 text-gray-700 font-medium">{userAnswers.profissao || '---'}</p>
+                    <button onClick={() => setEditingField('profissao')} className="ml-2 p-1 text-gray-500 hover:text-gray-800">
+                      <Edit3 size={16} />
+                    </button>
+                  </>
                 ) : (
-                  <input name="profissao" value={form.profissao} onChange={handleChange} className="w-full p-2 border rounded-md text-right" />
+                  <div className="flex items-center gap-2">
+                    <input name="profissao" value={form.profissao} onChange={handleChange} className="w-full p-2 border rounded-md text-right" />
+                    <button onClick={() => handleSaveField('profissao')} className="p-1 text-green-600 hover:text-green-800"><Check size={18} /></button>
+                    <button onClick={() => handleCancelField('profissao')} className="p-1 text-red-500 hover:text-red-700"><X size={18} /></button>
+                  </div>
                 )}
               </div>
             </div>
@@ -259,11 +295,20 @@ export default function Profile() {
                 <Ruler className="text-[#40804b] mr-[15px]" size={28} />
                 <h3 className="m-0 text-xl text-[#40804b] font-semibold">Atividade Física</h3>
               </div>
-              <div className="w-1/2 text-right">
-                {!editing ? (
-                  <p className="m-0 text-gray-700 font-medium">{userAnswers.atividade_fisica || '---'}</p>
+              <div className="w-1/2 text-right flex items-center justify-end gap-2">
+                {(!editing && editingField !== 'atividade_fisica') ? (
+                  <>
+                    <p className="m-0 text-gray-700 font-medium">{userAnswers.atividade_fisica || '---'}</p>
+                    <button onClick={() => setEditingField('atividade_fisica')} className="ml-2 p-1 text-gray-500 hover:text-gray-800">
+                      <Edit3 size={16} />
+                    </button>
+                  </>
                 ) : (
-                  <input name="atividade_fisica" value={form.atividade_fisica} onChange={handleChange} className="w-full p-2 border rounded-md text-right" />
+                  <div className="flex items-center gap-2">
+                    <input name="atividade_fisica" value={form.atividade_fisica} onChange={handleChange} className="w-full p-2 border rounded-md text-right" />
+                    <button onClick={() => handleSaveField('atividade_fisica')} className="p-1 text-green-600 hover:text-green-800"><Check size={18} /></button>
+                    <button onClick={() => handleCancelField('atividade_fisica')} className="p-1 text-red-500 hover:text-red-700"><X size={18} /></button>
+                  </div>
                 )}
               </div>
             </div>
@@ -279,6 +324,13 @@ export default function Profile() {
               <h3 className="text-2xl text-[#7B67A6] mb-2 font-bold group-hover:scale-105 transition-transform">Calendário</h3>
               <p className="text-gray-600">Acompanhe sua rotina e progresso</p>
             </Link>
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <button onClick={handleLogout} className="px-6 py-3 bg-red-500 text-white rounded-lg font-semibold hover:opacity-95 flex items-center gap-2">
+              <LogOut size={16} />
+              <span>Sair da Conta</span>
+            </button>
           </div>
 
         </div>

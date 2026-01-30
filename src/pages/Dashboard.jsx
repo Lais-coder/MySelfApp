@@ -92,7 +92,7 @@ export default function Dashboard() {
         
         {/* Boas-vindas */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-[#40804b] mb-2">Bem-vindo, {userData?.username}! 👋</h1>
+          <h1 className="text-4xl font-bold text-[#7B67A6] mb-2">Bem-vindo, {userData?.username}! 👋</h1>
           <p className="text-lg text-[#666]">Vamos acompanhar sua jornada de saúde e nutrição</p>
         </div>
 
@@ -160,7 +160,7 @@ export default function Dashboard() {
         </div>
 
         {/* Dicas Rápidas */}
-        <div className="bg-[#f0fdf4] rounded-lg p-8 border border-[#40804b]">
+        <div className="bg-[#f1ebfe] rounded-lg p-8 border border-[#40804b]">
           <h3 className="text-xl font-bold text-[#40804b] mb-4">💡 Dicas Rápidas</h3>
           <ul className="space-y-3 text-[#333]">
             <li>✓ Marque sua validação diária para acompanhar sua consistência</li>

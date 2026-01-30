@@ -1,24 +1,21 @@
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trophy, Star, Target } from 'lucide-react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
 
 const MOTIVATION_PHASES = [
-  { day: 1, phase: '🌱 Iniciante', message: 'Seu primeiro passo!', color: '#E8F5E9' },
-  { day: 7, phase: '🔥 Aquecendo', message: 'Já pegou ritmo!', color: '#FFF3E0' },
-  { day: 14, phase: '💪 Forte', message: 'Está indo bem!', color: '#FCE4EC' },
-  { day: 21, phase: '⭐ Estrela', message: 'Você é incrível!', color: '#F3E5F5' },
-  { day: 30, phase: '🏆 Campeão', message: 'Parabéns! 🎉', color: '#E0F2F1' }
+  { day: 1, phase: '🌱 Iniciante', message: 'Seu primeiro passo!', color: '#f0f8f7' },
+  { day: 7, phase: '🔥 Aquecendo', message: 'Já pegou ritmo!', color: '#fff9f0' },
+  { day: 14, phase: '💪 Forte', message: 'Está indo bem!', color: '#fff5f7' },
+  { day: 21, phase: '⭐ Estrela', message: 'Você é incrível!', color: '#f9f4ff' },
+  { day: 30, phase: '🏆 Campeão', message: 'Parabéns! 🎉', color: '#f0fdf4' }
 ]
 
 function getMotivationPhase(day) {
   let phase = MOTIVATION_PHASES[0]
   for (const p of MOTIVATION_PHASES) {
-    if (day >= p.day) {
-      phase = p
-    } else {
-      break
-    }
+    if (day >= p.day) phase = p
+    else break
   }
   return phase
 }
@@ -33,17 +30,8 @@ export default function Calendar() {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
         const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
-        
         if (!currentUser?.username) return
 
-        // Carrega dados do usuário
-        const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/me?username=${encodeURIComponent(currentUser.username)}`)
-        if (res.ok) {
-          const body = await res.json()
-          setUserData(body.user)
-        }
-
-        // Carrega check-ins do mês atual
         const year = currentDate.getFullYear()
         const month = currentDate.getMonth() + 1
         
@@ -63,16 +51,11 @@ export default function Calendar() {
 
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay()
-  
   const monthName = currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
   
   const days = []
-  for (let i = 0; i < firstDayOfMonth; i++) {
-    days.push(null)
-  }
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(i)
-  }
+  for (let i = 0; i < firstDayOfMonth; i++) days.push(null)
+  for (let i = 1; i <= daysInMonth; i++) days.push(i)
 
   const isChecked = (day) => {
     if (!day) return false
@@ -80,134 +63,131 @@ export default function Calendar() {
     return checkedDays.includes(dateStr)
   }
 
-  const previousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))
-  }
-
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
-  }
+  const previousMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))
 
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab']
-
-  // Calcula quantos dias foram marcados
   const totalMarked = checkedDays.length
   const phase = getMotivationPhase(totalMarked)
 
   return (
     <div className="min-h-screen bg-[#f7faff] font-marcellus text-[#333]">
       <Navbar />
-      <div className="max-w-[1000px] w-[90%] mx-auto py-8 mt-14 mb-20">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-[#40804b] mb-2">Seu Calendário de Acompanhamento 📅</h1>
-          <p className="text-lg text-[#666]">Acompanhe seus dias de validação e suas fases de motivação</p>
-        </div>
-
-        {/* Status Atual */}
-        <div className="bg-gradient-to-r from-[#f0fdf4] to-[#e8f5e9] rounded-lg shadow-md p-8 mb-8 border border-[#40804b]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[#40804b] text-sm font-bold uppercase">Sua Fase Atual</p>
-              <h2 className="text-3xl font-bold text-[#333] mt-2">{phase.phase}</h2>
-              <p className="text-lg text-[#666] mt-1">{phase.message}</p>
-              <p className="text-[#40804b] font-semibold mt-3">
-                {totalMarked} dia{totalMarked !== 1 ? 's' : ''} validado{totalMarked !== 1 ? 's' : ''}
-              </p>
-            </div>
-            <div className="text-6xl">{phase.phase.split(' ')[0]}</div>
-          </div>
-        </div>
-
-        {/* Calendário */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
+      
+      {/* Container Principal idêntico ao Profile */}
+      <div className="max-w-[1200px] w-[90%] mx-auto py-8 mt-14">
+        <div className="bg-white p-5 md:p-8 rounded-[10px] shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
           
-          {/* Controles de navegação */}
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={previousMonth}
-              className="p-2 hover:bg-[#f0f0f0] rounded-lg transition-colors"
-            >
-              <ChevronLeft className="text-[#40804b]" size={24} />
-            </button>
-            <h2 className="text-2xl font-bold text-[#40804b] capitalize">{monthName}</h2>
-            <button
-              onClick={nextMonth}
-              className="p-2 hover:bg-[#f0f0f0] rounded-lg transition-colors"
-            >
-              <ChevronRight className="text-[#40804b]" size={24} />
-            </button>
-          </div>
-
-          {/* Dias da semana */}
-          <div className="grid grid-cols-7 gap-2 mb-2">
-            {weekDays.map(day => (
-              <div
-                key={day}
-                className="h-12 flex items-center justify-center font-bold text-[#40804b]"
-              >
-                {day}
+          {/* Header da Página */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-6 border-b border-[#eee] pb-6">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-[#333] m-0">Calendário</h1>
+              <p className="text-[#555] mt-2 text-base">Acompanhe sua consistência e evolução diária.</p>
+            </div>
+            
+            {/* Status de Fase Atual (Estilo Badge do Profile) */}
+            <div className="bg-[#f9f4ff] border border-[#7B67A6]/20 p-4 rounded-lg flex items-center gap-4">
+              <div className="text-3xl">{phase.phase.split(' ')[0]}</div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-[#7B67A6] m-0 tracking-wider">Fase Atual</p>
+                <h3 className="text-lg font-bold text-[#333] m-0">{phase.phase.split(' ')[1]}</h3>
               </div>
-            ))}
+            </div>
           </div>
 
-          {/* Dias do calendário */}
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((day, idx) => {
-              const checked = isChecked(day)
-              const phase = day ? getMotivationPhase(day) : null
-              
-              return (
-                <div
-                  key={idx}
-                  className={`h-24 p-2 rounded-lg border-2 flex flex-col items-center justify-center text-center transition-all ${
-                    !day
-                      ? 'bg-transparent border-transparent'
-                      : checked
-                      ? `border-[#40804b] bg-[#f0fdf4]`
-                      : 'border-[#ddd] bg-white hover:border-[#40804b]'
-                  }`}
-                >
-                  {day && (
-                    <>
-                      <div className="font-bold text-lg text-[#333]">{day}</div>
-                      {checked && (
-                        <div className="text-sm font-semibold text-[#40804b] mt-1">✓ Validado</div>
-                      )}
-                      <div className="text-xs text-[#999] mt-1 leading-tight">
-                        {phase?.phase.split(' ')[0]}
-                      </div>
-                    </>
-                  )}
+          {/* Grid de Conteúdo: Calendário à esquerda, Infos à direita */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Coluna do Calendário (Ocupa 2/3 no desktop) */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-[10px] border border-[#ddd] overflow-hidden">
+                <div className="p-4 border-b bg-[#f9f4ff] flex items-center justify-between">
+                  <button onClick={previousMonth} className="p-1 hover:bg-white rounded-full transition-colors">
+                    <ChevronLeft className="text-[#7B67A6]" size={24} />
+                  </button>
+                  <h2 className="text-xl font-bold text-[#7B67A6] capitalize m-0">{monthName}</h2>
+                  <button onClick={nextMonth} className="p-1 hover:bg-white rounded-full transition-colors">
+                    <ChevronRight className="text-[#7B67A6]" size={24} />
+                  </button>
                 </div>
-              )
-            })}
-          </div>
-        </div>
 
-        {/* Legenda de Fases */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-8">
-          <h3 className="text-xl font-bold text-[#40804b] mb-6">Fases de Motivação</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {MOTIVATION_PHASES.map((p, idx) => (
-              <div
-                key={idx}
-                className="p-4 rounded-lg border-l-4 border-[#40804b]"
-                style={{ backgroundColor: p.color }}
-              >
-                <div className="text-2xl mb-2">{p.phase.split(' ')[0]}</div>
-                <p className="font-bold text-[#333]">{p.phase}</p>
-                <p className="text-sm text-[#666] mt-1">Dia {p.day}</p>
-                <p className="text-sm text-[#40804b] font-semibold mt-2">"{p.message}"</p>
+                <div className="p-4">
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {weekDays.map(day => (
+                      <div key={day} className="h-10 flex items-center justify-center font-bold text-[#7B67A6] text-xs uppercase">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1">
+                    {days.map((day, idx) => {
+                      const checked = isChecked(day)
+                      return (
+                        <div
+                          key={idx}
+                          className={`h-16 sm:h-20 rounded-lg border flex flex-col items-center justify-center transition-all ${
+                            !day ? 'border-transparent' : 
+                            checked ? 'border-[#40804b] bg-[#f0f8f7]' : 'border-[#eee] bg-white hover:border-[#7B67A6]'
+                          }`}
+                        >
+                          {day && (
+                            <>
+                              <span className={`text-sm font-bold ${checked ? 'text-[#40804b]' : 'text-gray-400'}`}>{day}</span>
+                              {checked && <div className="text-[9px] font-bold text-[#40804b] mt-1">✓ OK</div>}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        {/* Dicas */}
-        <div className="mt-8 bg-[#fef3c7] rounded-lg p-6 border border-[#f59e0b]">
-          <p className="font-semibold text-[#b45309]">💡 Dica: Continue marcando seus check-ins diários para desbloquear todas as fases de motivação e atingir o status de Campeão! 🏆</p>
+            {/* Coluna Lateral de Status e Legendas */}
+            <div className="flex flex-col gap-6">
+              {/* Card de Resumo de Progresso */}
+              <div className="bg-[#f0f8f7] border border-[#40804b]/20 rounded-[10px] p-5">
+                <h3 className="text-[#40804b] font-bold text-sm uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Target size={18}/> Progresso
+                </h3>
+                <div className="text-4xl font-bold text-[#333] mb-1">{totalMarked}</div>
+                <p className="text-[#555] text-sm font-medium">Dias validados no mês</p>
+                <div className="mt-4 bg-white/50 rounded-full h-2 w-full overflow-hidden">
+                  <div className="bg-[#40804b] h-full transition-all" style={{ width: `${(totalMarked/30)*100}%` }}></div>
+                </div>
+              </div>
+
+              {/* Lista de Fases (Estilo .stat-box compacta) */}
+              <div className="border border-[#ddd] rounded-[10px] p-5">
+                <h3 className="text-[#333] font-bold text-base mb-4">Próximas Fases</h3>
+                <div className="space-y-4">
+                  {MOTIVATION_PHASES.map((p, idx) => (
+                    <div key={idx} className={`flex items-center gap-3 p-2 rounded-md ${totalMarked >= p.day ? 'bg-[#f0f8f7]' : 'opacity-50'}`}>
+                      <span className="text-xl">{p.phase.split(' ')[0]}</span>
+                      <div>
+                        <p className="text-xs font-bold m-0 text-[#333]">{p.phase.split(' ')[1]}</p>
+                        <p className="text-[10px] m-0 text-gray-500">{p.day} dias</p>
+                      </div>
+                      {totalMarked >= p.day && <Star size={14} className="ml-auto text-[#40804b]" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dica Final Estilo Link do Profile */}
+          <div className="mt-8 p-6 bg-[#fff9f0] border border-[#f59e0b]/20 rounded-[10px] flex items-center gap-4">
+             <div className="bg-white p-3 rounded-lg shadow-sm border border-[#eee]">
+                <Trophy className="text-[#f59e0b]" size={24} />
+             </div>
+             <p className="text-sm text-[#7c5e10] m-0 leading-relaxed">
+               <strong>Dica de Ouro:</strong> Não quebre a corrente! A consistência é mais importante que a perfeição. Continue validando seus dias para atingir o status de <strong>Campeão</strong>.
+             </p>
+          </div>
+
         </div>
       </div>
       <Footer />
