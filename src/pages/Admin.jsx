@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
 import { useRef } from 'react'
+import { AlertCircle, Plus, Trash2, Check } from 'lucide-react'
 
 export default function Admin() {
   const [users, setUsers] = useState([])
@@ -9,20 +10,52 @@ export default function Admin() {
   const [editingUser, setEditingUser] = useState(null)
   const [planText, setPlanText] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [currentDayStep, setCurrentDayStep] = useState(0)
   const [planObj, setPlanObj] = useState({ days: [] })
   const [showCreateAdmin, setShowCreateAdmin] = useState(false)
   const [newAdmin, setNewAdmin] = useState({ username: '', email: '', password: '' })
-  const [presets] = useState([
-    { name: 'Plano Proteico', plan: { days: [{ day: 'Segunda', meals: [{ name: 'Almoço', items: ['Peito de frango', 'Arroz integral'] }] }] } },
-    { name: 'Plano Vegetariano', plan: { days: [{ day: 'Segunda', meals: [{ name: 'Almoço', items: ['Quinoa', 'Salada', 'Grão de bico'] }] }] } }
-  ])
+  const [validationErrors, setValidationErrors] = useState([])
+
+  const weekDays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+  const mealTypes = ['Café da Manhã', 'Almoço', 'Lanche', 'Jantar']
+  
   const modalRef = useRef()
+
+  const validatePlan = () => {
+    const errors = []
+    if (!planObj.days || planObj.days.length !== 7) {
+      errors.push('Você deve adicionar todos os 7 dias da semana')
+    } else {
+      planObj.days.forEach((day, idx) => {
+        if (!day.meals || day.meals.length !== 4) {
+          errors.push(`${day.day} deve ter exatamente 4 refeições (Café, Almoço, Lanche, Jantar)`)
+        } else {
+          day.meals.forEach((meal, mIdx) => {
+            if (!meal.items || meal.items.length === 0) {
+              errors.push(`${day.day} - ${meal.name}: adicione pelo menos 1 item`)
+            }
+          })
+        }
+      })
+    }
+    setValidationErrors(errors)
+    return errors.length === 0
+  }
+
+  const initializePlan = () => {
+    const newPlan = weekDays.map(day => ({
+      day,
+      meals: mealTypes.map(mealType => ({ name: mealType, items: [''] }))
+    }))
+    setPlanObj({ days: newPlan })
+    setCurrentDayStep(0)
+    setValidationErrors([])
+  }
 
   useEffect(() => {
     const load = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-        // Pega usuário atual do localStorage e envia username como query (o backend usa isso para verificar isAdmin)
+        const apiUrl = import.meta.env.VITE_API_URL || '  '
         let currentUser = null
         try {
           currentUser = JSON.parse(localStorage.getItem('user') || 'null')
@@ -85,202 +118,229 @@ export default function Admin() {
                       <td className="px-4 py-3">{new Date(u.created_at).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         <button onClick={() => {
-                          setEditingUser(editingUser === u.username ? null : u.username)
-                          setPlanText(JSON.stringify(u.questionnaire_data?.food_plan || u.food_plan || {}, null, 2) || '')
-                        }} className="px-3 py-1 bg-[#f3f4f6] rounded-md">Definir Plano</button>
+                          initializePlan()
+                          setModalOpen(true)
+                        }} className="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium">Definir Plano</button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
 
-                {/* Inline editor para definir plano do usuário selecionado */}
-                {editingUser && (
-                  <div className="mt-6 p-4 bg-slate-50 border rounded">
-                    <h3 className="font-semibold mb-2">Definir Plano para {editingUser}</h3>
-                    <div className="flex items-center gap-3 mb-2">
-                      <label className="text-sm text-gray-600">Presets:</label>
-                      <select onChange={e => {
-                        const idx = e.target.value
-                        if (idx === '') return
-                        setPlanText(JSON.stringify(presets[idx].plan, null, 2))
-                      }} className="p-2 border rounded">
-                        <option value="">Escolher preset...</option>
-                        {presets.map((p, i) => <option value={i} key={p.name}>{p.name}</option>)}
-                      </select>
+              {/* Create admin form */}
+              <div className="mt-6">
+                <button onClick={() => setShowCreateAdmin(s => !s)} className="px-3 py-2 bg-indigo-600 text-white rounded">{showCreateAdmin ? 'Fechar criação de admin' : 'Criar novo admin'}</button>
+                {showCreateAdmin && (
+                  <div className="mt-3 p-4 bg-slate-50 border rounded">
+                    <h3 className="font-semibold mb-2">Criar Admin</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                      <input placeholder="username" value={newAdmin.username} onChange={e => setNewAdmin(p => ({ ...p, username: e.target.value }))} className="p-2 border rounded" />
+                      <input placeholder="email" value={newAdmin.email} onChange={e => setNewAdmin(p => ({ ...p, email: e.target.value }))} className="p-2 border rounded" />
+                      <input placeholder="senha" value={newAdmin.password} onChange={e => setNewAdmin(p => ({ ...p, password: e.target.value }))} className="p-2 border rounded" />
                     </div>
-
-                    <textarea value={planText} onChange={e => setPlanText(e.target.value)} className="w-full h-40 p-2 border rounded mb-3 font-mono text-sm" />
-
-                    {/* preview */}
-                    <div className="mb-3">
-                      <h4 className="font-medium">Preview</h4>
-                      <pre className="max-h-48 overflow-auto bg-white p-3 border rounded text-sm">{(() => {
-                        try { return JSON.stringify(JSON.parse(planText||'{}'), null, 2) } catch (e) { return 'JSON inválido - corrija antes de salvar.' }
-                      })()}</pre>
-                    </div>
-
                     <div className="flex gap-3">
-                      <button onClick={() => {
-                        try {
-                          const parsed = JSON.parse(planText || '{}')
-                          setPlanObj(parsed?.days ? parsed : { days: parsed.days || [] })
-                        } catch (e) {
-                          setPlanObj({ days: [] })
-                        }
-                        setModalOpen(true)
-                      }} className="px-4 py-2 bg-blue-600 text-white rounded">Abrir editor estruturado</button>
-
                       <button onClick={async () => {
                         try {
                           const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
                           const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
-                          let planObj
-                          try { planObj = JSON.parse(planText || '{}') } catch (e) { throw new Error('JSON inválido') }
-                          const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(editingUser)}/foodplan?username=${encodeURIComponent(adminUser?.username||'')}`, {
-                            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: planObj })
+                          if (!adminUser?.username) return alert('Você precisa estar logado como admin para criar um admin')
+                          const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/admin/create-user?username=${encodeURIComponent(adminUser.username)}`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newAdmin)
                           })
-                          if (!res.ok) throw new Error('Erro ao salvar plano: ' + res.status)
+                          if (!res.ok) throw new Error('Erro: ' + res.status)
+                          alert('Admin criado/atualizado com sucesso')
                           // recarrega lista
                           const reloadUrl = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/users`)
-                          if (adminUser?.username) reloadUrl.searchParams.set('username', adminUser.username)
+                          reloadUrl.searchParams.set('username', adminUser.username)
                           const reloadRes = await fetch(reloadUrl.toString())
                           if (reloadRes.ok) {
                             const body = await reloadRes.json()
                             setUsers(body.data || [])
                           }
-                          setEditingUser(null)
-                          setPlanText('')
+                          setShowCreateAdmin(false)
+                          setNewAdmin({ username: '', email: '', password: '' })
                         } catch (err) {
                           console.error(err)
-                          alert('Erro ao salvar plano: ' + err.message)
+                          alert('Erro ao criar admin: ' + err.message)
                         }
-                      }} className="px-4 py-2 bg-[#10b981] text-white rounded">Salvar Plano (JSON)</button>
-
-                      <button onClick={() => { setEditingUser(null); setPlanText('') }} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
+                      }} className="px-4 py-2 bg-indigo-600 text-white rounded">Criar Admin</button>
+                      <button onClick={() => { setShowCreateAdmin(false); setNewAdmin({ username: '', email: '', password: '' }) }} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
                     </div>
                   </div>
                 )}
-
-                {/* Create admin form */}
-                <div className="mt-6">
-                  <button onClick={() => setShowCreateAdmin(s => !s)} className="px-3 py-2 bg-indigo-600 text-white rounded">{showCreateAdmin ? 'Fechar criação de admin' : 'Criar novo admin'}</button>
-                  {showCreateAdmin && (
-                    <div className="mt-3 p-4 bg-slate-50 border rounded">
-                      <h3 className="font-semibold mb-2">Criar Admin</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                        <input placeholder="username" value={newAdmin.username} onChange={e => setNewAdmin(p => ({ ...p, username: e.target.value }))} className="p-2 border rounded" />
-                        <input placeholder="email" value={newAdmin.email} onChange={e => setNewAdmin(p => ({ ...p, email: e.target.value }))} className="p-2 border rounded" />
-                        <input placeholder="senha" value={newAdmin.password} onChange={e => setNewAdmin(p => ({ ...p, password: e.target.value }))} className="p-2 border rounded" />
-                      </div>
-                      <div className="flex gap-3">
-                        <button onClick={async () => {
-                          try {
-                            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-                            const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
-                            if (!adminUser?.username) return alert('Você precisa estar logado como admin para criar um admin')
-                            const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/admin/create-user?username=${encodeURIComponent(adminUser.username)}`, {
-                              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newAdmin)
-                            })
-                            if (!res.ok) throw new Error('Erro: ' + res.status)
-                            alert('Admin criado/atualizado com sucesso')
-                            // recarrega lista
-                            const reloadUrl = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/users`)
-                            reloadUrl.searchParams.set('username', adminUser.username)
-                            const reloadRes = await fetch(reloadUrl.toString())
-                            if (reloadRes.ok) {
-                              const body = await reloadRes.json()
-                              setUsers(body.data || [])
-                            }
-                            setShowCreateAdmin(false)
-                            setNewAdmin({ username: '', email: '', password: '' })
-                          } catch (err) {
-                            console.error(err)
-                            alert('Erro ao criar admin: ' + err.message)
-                          }
-                        }} className="px-4 py-2 bg-indigo-600 text-white rounded">Criar Admin</button>
-                        <button onClick={() => { setShowCreateAdmin(false); setNewAdmin({ username: '', email: '', password: '' }) }} className="px-4 py-2 bg-gray-200 rounded">Cancelar</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal estruturado para editar plano */}
+      {/* Modal estruturado para editar plano com validação */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-11/12 md:w-3/4 lg:w-2/3 bg-white rounded-lg shadow-lg p-6 max-h-[90vh] overflow-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-semibold">Editar Plano - {editingUser}</h3>
-              <button onClick={() => setModalOpen(false)} className="text-gray-500 hover:text-gray-800">Fechar ✕</button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-4xl bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center shadow-md">
+              <h2 className="text-2xl font-bold">Criar Plano para {editingUser}</h2>
+              <button onClick={() => setModalOpen(false)} className="text-xl font-bold hover:bg-white/20 p-2 rounded">✕</button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <button onClick={() => setPlanObj(p => ({ days: [...(p.days||[]), { day: 'Novo Dia', meals: [] }] }))} className="px-3 py-1 bg-indigo-600 text-white rounded">Adicionar Dia</button>
-              </div>
-
-              {(planObj.days || []).map((day, di) => (
-                <div key={di} className="p-3 border rounded">
-                  <div className="flex items-center justify-between mb-2">
-                    <input value={day.day} onChange={e => setPlanObj(p => { const d = [...p.days]; d[di].day = e.target.value; return { days: d } })} className="p-2 border rounded w-1/2" />
-                    <div className="flex gap-2">
-                      <button onClick={() => setPlanObj(p => ({ days: p.days.filter((_,i) => i!==di) }))} className="px-2 py-1 bg-red-500 text-white rounded">Remover Dia</button>
-                      <button onClick={() => setPlanObj(p => { const d = [...p.days]; d[di].meals.push({ name: 'Nova Refeição', items: ['Item1'] }); return { days: d } })} className="px-2 py-1 bg-green-500 text-white rounded">Adicionar Refeição</button>
+            <div className="p-6">
+              {/* Validação */}
+              {validationErrors.length > 0 && (
+                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+                  <div className="flex gap-2 items-start">
+                    <AlertCircle size={20} className="text-red-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-red-800 mb-2">Erros encontrados:</p>
+                      <ul className="text-sm text-red-700 space-y-1">
+                        {validationErrors.map((err, idx) => <li key={idx}>• {err}</li>)}
+                      </ul>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {(day.meals || []).map((meal, mi) => (
-                    <div key={mi} className="mb-2 p-2 bg-slate-50 border rounded">
-                      <div className="flex items-center justify-between mb-2">
-                        <input value={meal.name} onChange={e => setPlanObj(p => { const d = [...p.days]; d[di].meals[mi].name = e.target.value; return { days: d } })} className="p-2 border rounded w-1/2" />
-                        <div className="flex gap-2">
-                          <button onClick={() => setPlanObj(p => { const d = [...p.days]; d[di].meals = d[di].meals.filter((_,i)=>i!==mi); return { days: d } })} className="px-2 py-1 bg-red-400 text-white rounded">Remover</button>
-                          <button onClick={() => setPlanObj(p => { const d = [...p.days]; d[di].meals[mi].items.push('Novo item'); return { days: d } })} className="px-2 py-1 bg-blue-500 text-white rounded">Adicionar Item</button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {(meal.items || []).map((it, ii) => (
-                          <div key={ii} className="flex items-center gap-2">
-                            <input value={it} onChange={e => setPlanObj(p => { const d = [...p.days]; d[di].meals[mi].items[ii] = e.target.value; return { days: d } })} className="p-2 border rounded w-full" />
-                            <button onClick={() => setPlanObj(p => { const d = [...p.days]; d[di].meals[mi].items = d[di].meals[mi].items.filter((_,idx)=>idx!==ii); return { days: d } })} className="px-2 py-1 bg-red-300 rounded">x</button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              {/* Step Indicator */}
+              <div className="mb-6">
+                <div className="flex justify-between mb-3">
+                  {weekDays.map((day, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentDayStep(idx)}
+                      className={`flex-1 mx-1 py-3 rounded-lg font-semibold text-sm transition-all ${
+                        currentDayStep === idx
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : planObj.days?.[idx]?.meals?.every(m => m.items?.some(i => i.trim()))
+                          ? 'bg-green-100 text-green-700 border-2 border-green-400'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {day.slice(0, 3)}
+                      {planObj.days?.[idx]?.meals?.every(m => m.items?.some(i => i.trim())) && (
+                        <span className="ml-1">✓</span>
+                      )}
+                    </button>
                   ))}
                 </div>
-              ))}
+                <p className="text-xs text-gray-500 text-center">Verde = Preenchido | Azul = Atual</p>
+              </div>
 
-              <div className="flex justify-end gap-3 mt-4">
-                <button onClick={() => { setModalOpen(false) }} className="px-4 py-2 bg-gray-200 rounded">Fechar</button>
-                <button onClick={async () => {
-                  try {
-                    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-                    const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
-                    const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(editingUser)}/foodplan?username=${encodeURIComponent(adminUser?.username||'')}`, {
-                      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: planObj })
-                    })
-                    if (!res.ok) throw new Error('Erro ao salvar plano: ' + res.status)
-                    // recarrega lista
-                    const reloadUrl = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/users`)
-                    if (adminUser?.username) reloadUrl.searchParams.set('username', adminUser.username)
-                    const reloadRes = await fetch(reloadUrl.toString())
-                    if (reloadRes.ok) {
-                      const body = await reloadRes.json()
-                      setUsers(body.data || [])
+              {/* Day Editor */}
+              {planObj.days?.[currentDayStep] && (
+                <div className="space-y-6">
+                  <h3 className="text-2xl font-bold text-gray-800">{planObj.days[currentDayStep].day}</h3>
+
+                  {/* Meals Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {planObj.days[currentDayStep].meals?.map((meal, mIdx) => (
+                      <div
+                        key={mIdx}
+                        className="p-5 border-2 border-gray-200 rounded-lg hover:border-indigo-400 transition-all"
+                      >
+                        <h4 className="font-bold text-lg mb-3 text-indigo-700">{meal.name}</h4>
+                        <div className="space-y-2 mb-3">
+                          {meal.items?.map((item, iIdx) => (
+                            <div key={iIdx} className="flex gap-2 items-center">
+                              <input
+                                type="text"
+                                value={item}
+                                onChange={(e) => {
+                                  const d = [...planObj.days]
+                                  d[currentDayStep].meals[mIdx].items[iIdx] = e.target.value
+                                  setPlanObj({ days: d })
+                                }}
+                                placeholder="Ex: Arroz integral, Frango grelhado..."
+                                className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              />
+                              <button
+                                onClick={() => {
+                                  const d = [...planObj.days]
+                                  d[currentDayStep].meals[mIdx].items = d[currentDayStep].meals[mIdx].items.filter((_, idx) => idx !== iIdx)
+                                  setPlanObj({ days: d })
+                                }}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => {
+                            const d = [...planObj.days]
+                            d[currentDayStep].meals[mIdx].items.push('')
+                            setPlanObj({ days: d })
+                          }}
+                          className="w-full px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+                        >
+                          <Plus size={16} /> Adicionar item
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Navigation */}
+                  <div className="flex gap-3 justify-between pt-6 border-t">
+                    <button
+                      onClick={() => setCurrentDayStep(Math.max(0, currentDayStep - 1))}
+                      disabled={currentDayStep === 0}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      ← Anterior
+                    </button>
+                    <button
+                      onClick={() => setCurrentDayStep(Math.min(6, currentDayStep + 1))}
+                      disabled={currentDayStep === 6}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg disabled:opacity-50 hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      Próximo →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Save Button */}
+              <div className="flex gap-3 justify-end pt-6 border-t mt-6">
+                <button
+                  onClick={() => setModalOpen(false)}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-bold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!validatePlan()) return
+                    try {
+                      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+                      const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+                      const res = await fetch(
+                        `${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(editingUser)}/foodplan?username=${encodeURIComponent(adminUser?.username || '')}`,
+                        {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ plan: planObj })
+                        }
+                      )
+                      if (!res.ok) throw new Error('Erro ao salvar plano: ' + res.status)
+                      alert('Plano salvo com sucesso!')
+                      const reloadUrl = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/users`)
+                      if (adminUser?.username) reloadUrl.searchParams.set('username', adminUser.username)
+                      const reloadRes = await fetch(reloadUrl.toString())
+                      if (reloadRes.ok) {
+                        const body = await reloadRes.json()
+                        setUsers(body.data || [])
+                      }
+                      setModalOpen(false)
+                      setEditingUser(null)
+                    } catch (err) {
+                      console.error(err)
+                      alert('Erro ao salvar plano: ' + (err.message || ''))
                     }
-                    setModalOpen(false)
-                    setEditingUser(null)
-                    setPlanText('')
-                  } catch (err) {
-                    console.error(err)
-                    alert('Erro ao salvar plano: ' + err.message)
-                  }
-                }} className="px-4 py-2 bg-[#10b981] text-white rounded">Salvar Plano</button>
+                  }}
+                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center gap-2 transition-colors shadow-lg"
+                >
+                  <Check size={18} /> Salvar Plano Completo
+                </button>
               </div>
             </div>
           </div>
