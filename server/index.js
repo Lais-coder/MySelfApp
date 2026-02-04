@@ -5,7 +5,7 @@ const path = require('path')
 const fs = require('fs')
 const multer = require('multer')
 
-const { init, insertSubmission, listSubmissions, createUser, getUserByUsername, updateUserQuestionnaire, getUserQuestionnaire, updateUserFields, listUsers, getCheckinsCounts, addDailyCheckin, getDailyCheckins, getDailyCheckinsForMonth, setUserFoodPlan, getUserFoodPlan } = require('./db')
+const { init, insertSubmission, listSubmissions, createUser, getUserByUsername, updateUserQuestionnaire, getUserQuestionnaire, updateUserFields, listUsers, getCheckinsCounts, addDailyCheckin, getDailyCheckins, getDailyCheckinsForMonth, setUserFoodPlan, getUserFoodPlan, listMealTemplates, getMealTemplatesByType, createMealTemplate, deleteMealTemplate } = require('./db')
 const { db } = require('./db')
 const bcrypt = require('bcryptjs')
 
@@ -338,6 +338,49 @@ app.post('/api/admin/create-user', isAdmin, async (req, res) => {
     }
   } catch (err) {
     console.error('Erro ao criar admin:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Rotas para modelos de refeição (meal templates)
+app.get('/api/admin/meal-templates', isAdmin, async (req, res) => {
+  try {
+    const { meal_type } = req.query
+    const templates = meal_type 
+      ? await getMealTemplatesByType(meal_type)
+      : await listMealTemplates()
+    res.json({ success: true, data: templates })
+  } catch (err) {
+    console.error('Erro ao listar modelos de refeição:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/admin/meal-templates', isAdmin, async (req, res) => {
+  try {
+    const { name, meal_type, items } = req.body || {}
+    if (!name || !meal_type || !items || !Array.isArray(items)) {
+      return res.status(400).json({ error: 'name, meal_type e items (array) são obrigatórios' })
+    }
+    const result = await createMealTemplate(name, meal_type, items)
+    res.json({ success: true, data: { id: result.id, name, meal_type, items } })
+  } catch (err) {
+    console.error('Erro ao criar modelo de refeição:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.delete('/api/admin/meal-templates/:id', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params
+    if (!id) return res.status(400).json({ error: 'id é obrigatório' })
+    const result = await deleteMealTemplate(id)
+    if (!result.deleted) {
+      return res.status(404).json({ error: 'Modelo não encontrado' })
+    }
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Erro ao deletar modelo de refeição:', err)
     res.status(500).json({ error: err.message })
   }
 })

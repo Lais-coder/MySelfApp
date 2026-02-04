@@ -8,10 +8,21 @@ export default function Admin() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [editingUser, setEditingUser] = useState(null)
-  const [planText, setPlanText] = useState('')
+  // Plano estruturado por dia/refeição
   const [modalOpen, setModalOpen] = useState(false)
   const [currentDayStep, setCurrentDayStep] = useState(0)
   const [planObj, setPlanObj] = useState({ days: [] })
+  // Modelos de refeição carregados do backend
+  const [mealTemplates, setMealTemplates] = useState([])
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
+  // Modal para selecionar/criar modelo
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [selectedMealContext, setSelectedMealContext] = useState(null) // { dayIndex, mealIndex }
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    meal_type: 'Café da Manhã',
+    items: ['']
+  })
   const [showCreateAdmin, setShowCreateAdmin] = useState(false)
   const [newAdmin, setNewAdmin] = useState({ username: '', email: '', password: '' })
   const [validationErrors, setValidationErrors] = useState([])
@@ -50,12 +61,35 @@ export default function Admin() {
     setPlanObj({ days: newPlan })
     setCurrentDayStep(0)
     setValidationErrors([])
+    loadMealTemplates()
+  }
+
+  const loadMealTemplates = async () => {
+    setLoadingTemplates(true)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+      const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+      if (!adminUser?.username) return
+
+      const url = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/meal-templates`)
+      url.searchParams.set('username', adminUser.username)
+
+      const res = await fetch(url.toString())
+      if (res.ok) {
+        const body = await res.json()
+        setMealTemplates(body.data || [])
+      }
+    } catch (err) {
+      console.error('Erro ao carregar modelos:', err)
+    } finally {
+      setLoadingTemplates(false)
+    }
   }
 
   useEffect(() => {
     const load = async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || '  '
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
         let currentUser = null
         try {
           currentUser = JSON.parse(localStorage.getItem('user') || 'null')
@@ -117,10 +151,16 @@ export default function Admin() {
                       <td className="px-4 py-3">{u.is_admin ? 'Sim' : 'Não'}</td>
                       <td className="px-4 py-3">{new Date(u.created_at).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => {
-                          initializePlan()
-                          setModalOpen(true)
-                        }} className="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium">Definir Plano</button>
+                        <button
+                          onClick={() => {
+                            setEditingUser(u.username)
+                            initializePlan()
+                            setModalOpen(true)
+                          }}
+                          className="px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 font-medium"
+                        >
+                          Definir Plano
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -237,7 +277,18 @@ export default function Admin() {
                         key={mIdx}
                         className="p-5 border-2 border-gray-200 rounded-lg hover:border-indigo-400 transition-all"
                       >
-                        <h4 className="font-bold text-lg mb-3 text-indigo-700">{meal.name}</h4>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-bold text-lg text-indigo-700">{meal.name}</h4>
+                          <button
+                            onClick={() => {
+                              setSelectedMealContext({ dayIndex: currentDayStep, mealIndex: mIdx })
+                              setShowTemplateModal(true)
+                            }}
+                            className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                          >
+                            <Plus size={14} /> Adicionar modelo pronto
+                          </button>
+                        </div>
                         <div className="space-y-2 mb-3">
                           {meal.items?.map((item, iIdx) => (
                             <div key={iIdx} className="flex gap-2 items-center">
@@ -346,6 +397,193 @@ export default function Admin() {
           </div>
         </div>
       )}
+
+      {/* Modal para selecionar/criar modelo de refeição */}
+      {showTemplateModal && selectedMealContext && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center shadow-md">
+              <h2 className="text-2xl font-bold">
+                Modelos de {planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowTemplateModal(false)
+                  setSelectedMealContext(null)
+                  setNewTemplate({ name: '', meal_type: 'Café da Manhã', items: [''] })
+                }}
+                className="text-xl font-bold hover:bg-white/20 p-2 rounded"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Lista de modelos existentes */}
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-800 mb-3 text-base">Selecionar modelo existente</h3>
+                {loadingTemplates ? (
+                  <p className="text-gray-500 text-base">Carregando...</p>
+                ) : mealTemplates.filter(t => t.meal_type === planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name).length === 0 ? (
+                  <p className="text-gray-500 text-base">Nenhum modelo disponível para esta refeição.</p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {mealTemplates
+                      .filter(t => t.meal_type === planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name)
+                      .map(t => (
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-indigo-400 transition-all"
+                        >
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-800 text-base">{t.name}</p>
+                            <p className="text-sm text-gray-500 mt-1">{t.items.join(' • ')}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={async () => {
+                                const d = [...planObj.days]
+                                d[selectedMealContext.dayIndex].meals[selectedMealContext.mealIndex].items = [...(t.items || [])]
+                                setPlanObj({ days: d })
+                                setShowTemplateModal(false)
+                                setSelectedMealContext(null)
+                              }}
+                              className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-semibold"
+                            >
+                              Usar
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Tem certeza que deseja deletar este modelo?')) return
+                                try {
+                                  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+                                  const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+                                  const url = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/meal-templates/${t.id}`)
+                                  url.searchParams.set('username', adminUser?.username || '')
+                                  const res = await fetch(url.toString(), { method: 'DELETE' })
+                                  if (res.ok) {
+                                    await loadMealTemplates()
+                                  } else {
+                                    alert('Erro ao deletar modelo')
+                                  }
+                                } catch (err) {
+                                  console.error(err)
+                                  alert('Erro ao deletar modelo: ' + err.message)
+                                }
+                              }}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                              title="Deletar modelo"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Criar novo modelo */}
+              <div className="border-t pt-6">
+                <h3 className="font-semibold text-gray-800 mb-3 text-base">Criar novo modelo</h3>
+                <div className="space-y-3">
+                  <select
+                    value={newTemplate.name}
+                    onChange={(e) => setNewTemplate(t => ({ ...t, name: e.target.value }))}
+                    className="w-full px-3 py-2 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Selecione o nome do modelo</option>
+                    <option value="Café da Manhã">Café da Manhã</option>
+                    <option value="Almoço">Almoço</option>
+                    <option value="Merenda">Merenda</option>
+                  </select>
+                  <div className="space-y-2">
+                    {newTemplate.items.map((item, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item}
+                          onChange={(e) => {
+                            const items = [...newTemplate.items]
+                            items[idx] = e.target.value
+                            setNewTemplate(t => ({ ...t, items }))
+                          }}
+                          placeholder="Item da refeição"
+                          className="flex-1 px-3 py-2 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <button
+                          onClick={() => {
+                            const items = newTemplate.items.filter((_, i) => i !== idx)
+                            setNewTemplate(t => ({ ...t, items: items.length ? items : [''] }))
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setNewTemplate(t => ({ ...t, items: [...t.items, ''] }))}
+                    className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-base font-medium flex items-center justify-center gap-2"
+                  >
+                    <Plus size={16} /> Adicionar item
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!newTemplate.name || !newTemplate.name.trim()) {
+                        alert('Selecione um nome para o modelo')
+                        return
+                      }
+                      const cleanedItems = newTemplate.items.map(i => i.trim()).filter(Boolean)
+                      if (cleanedItems.length === 0) {
+                        alert('Adicione pelo menos um item')
+                        return
+                      }
+                      try {
+                        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+                        const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+                        const mealType = planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name
+                        const url = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/meal-templates`)
+                        url.searchParams.set('username', adminUser?.username || '')
+                        const res = await fetch(url.toString(), {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            name: newTemplate.name.trim(),
+                            meal_type: mealType,
+                            items: cleanedItems
+                          })
+                        })
+                        if (res.ok) {
+                          await loadMealTemplates()
+                          // Aplicar automaticamente o modelo criado
+                          const d = [...planObj.days]
+                          d[selectedMealContext.dayIndex].meals[selectedMealContext.mealIndex].items = cleanedItems
+                          setPlanObj({ days: d })
+                          setNewTemplate({ name: '', meal_type: mealType, items: [''] })
+                          setShowTemplateModal(false)
+                          setSelectedMealContext(null)
+                        } else {
+                          const body = await res.json().catch(() => ({}))
+                          alert('Erro ao criar modelo: ' + (body.error || 'Erro desconhecido'))
+                        }
+                      } catch (err) {
+                        console.error(err)
+                        alert('Erro ao criar modelo: ' + err.message)
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-base font-semibold flex items-center justify-center gap-2"
+                  >
+                    <Plus size={16} /> Criar e usar modelo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   )

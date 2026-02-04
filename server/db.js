@@ -218,6 +218,50 @@ const getDailyCheckinsForMonth = (username, year, month) => {
   })
 }
 
+// Meal Templates CRUD
+const listMealTemplates = () => {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM meal_templates ORDER BY meal_type, name', (err, rows) => {
+      if (err) return reject(err)
+      resolve(rows.map(r => ({
+        ...r,
+        items: JSON.parse(r.items || '[]')
+      })))
+    })
+  })
+}
+
+const getMealTemplatesByType = (mealType) => {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM meal_templates WHERE meal_type = ? ORDER BY name', [mealType], (err, rows) => {
+      if (err) return reject(err)
+      resolve(rows.map(r => ({
+        ...r,
+        items: JSON.parse(r.items || '[]')
+      })))
+    })
+  })
+}
+
+const createMealTemplate = (name, mealType, items) => {
+  return new Promise((resolve, reject) => {
+    const stmt = db.prepare('INSERT INTO meal_templates (name, meal_type, items) VALUES (?, ?, ?)')
+    stmt.run(name, mealType, JSON.stringify(items || []), function (err) {
+      if (err) return reject(err)
+      resolve({ id: this.lastID })
+    })
+  })
+}
+
+const deleteMealTemplate = (id) => {
+  return new Promise((resolve, reject) => {
+    db.run('DELETE FROM meal_templates WHERE id = ?', [id], function (err) {
+      if (err) return reject(err)
+      resolve({ success: true, deleted: this.changes > 0 })
+    })
+  })
+}
+
 module.exports = {
   db,
   init,
@@ -234,5 +278,9 @@ module.exports = {
   getDailyCheckins,
   getDailyCheckinsForMonth,
   setUserFoodPlan,
-  getUserFoodPlan
+  getUserFoodPlan,
+  listMealTemplates,
+  getMealTemplatesByType,
+  createMealTemplate,
+  deleteMealTemplate
 }
