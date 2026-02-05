@@ -23,7 +23,7 @@ export default function Login() {
     ;(async () => {
       try {
         await login(formData.username, formData.password)
-        navigate('/profile')
+        navigate('/dashboard')
       } catch (err) {
       }
     })()

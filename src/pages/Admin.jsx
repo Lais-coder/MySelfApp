@@ -219,7 +219,7 @@ export default function Admin() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-4xl bg-white rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-4 flex justify-between items-center shadow-md">
+            <div className="sticky top-0 bg-purple-lilac2 text-white px-6 py-4 flex justify-between items-center shadow-md">
               <h2 className="text-2xl font-bold">Criar Plano para {editingUser}</h2>
               <button onClick={() => setModalOpen(false)} className="text-xl font-bold hover:bg-white/20 p-2 rounded">✕</button>
             </div>
@@ -249,7 +249,7 @@ export default function Admin() {
                       onClick={() => setCurrentDayStep(idx)}
                       className={`flex-1 mx-1 py-3 rounded-lg font-semibold text-sm transition-all ${
                         currentDayStep === idx
-                          ? 'bg-indigo-600 text-white shadow-md'
+                          ? 'bg-[#7c64a4] text-white shadow-md'
                           : planObj.days?.[idx]?.meals?.every(m => m.items?.some(i => i.trim()))
                           ? 'bg-green-100 text-green-700 border-2 border-green-400'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -496,6 +496,7 @@ export default function Admin() {
                     <option value="Café da Manhã">Café da Manhã</option>
                     <option value="Almoço">Almoço</option>
                     <option value="Merenda">Merenda</option>
+                    <option value="Jantar">Jantar</option>
                   </select>
                   <div className="space-y-2">
                     {newTemplate.items.map((item, idx) => (

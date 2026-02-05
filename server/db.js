@@ -29,6 +29,7 @@ const init = () => {
         email TEXT,
         password TEXT,
         questionnaire_data JSON,
+        health_data JSON,
         questionnaire_updated_at DATETIME,
         is_admin INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -89,6 +90,17 @@ const updateUserQuestionnaire = (username, questionnaireData) => {
   return new Promise((resolve, reject) => {
     const stmt = db.prepare('UPDATE users SET questionnaire_data = ?, questionnaire_updated_at = CURRENT_TIMESTAMP WHERE username = ?')
     stmt.run(JSON.stringify(questionnaireData), username, function (err) {
+      if (err) return reject(err)
+      resolve({ success: true })
+    })
+  })
+}
+
+// NOVA FUNÇÃO: Atualiza a etapa 2 (Saúde)
+const updateUserHealth = (username, healthData) => {
+  return new Promise((resolve, reject) => {
+    const stmt = db.prepare('UPDATE users SET health_data = ?, questionnaire_updated_at = CURRENT_TIMESTAMP WHERE username = ?')
+    stmt.run(JSON.stringify(healthData), username, function (err) {
       if (err) return reject(err)
       resolve({ success: true })
     })
@@ -164,9 +176,13 @@ const updateUserFields = (username, fields) => {
 
 const listUsers = () => {
   return new Promise((resolve, reject) => {
-    db.all('SELECT id, username, email, questionnaire_data, questionnaire_updated_at, is_admin, created_at FROM users ORDER BY created_at DESC', (err, rows) => {
+    db.all('SELECT id, username, email, questionnaire_data, health_data, questionnaire_updated_at, is_admin, created_at FROM users ORDER BY created_at DESC', (err, rows) => {
       if (err) return reject(err)
-      const parsed = rows.map(r => ({ ...r, questionnaire_data: JSON.parse(r.questionnaire_data || '{}') }))
+      const parsed = rows.map(r => ({ 
+        ...r, 
+        questionnaire_data: JSON.parse(r.questionnaire_data || '{}'),
+        health_data: JSON.parse(r.health_data || '{}')
+      }))
       resolve(parsed)
     })
   })
@@ -270,6 +286,7 @@ module.exports = {
   createUser,
   getUserByUsername,
   updateUserQuestionnaire,
+  updateUserHealth, // Exportada
   getUserQuestionnaire,
   updateUserFields,
   listUsers,

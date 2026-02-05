@@ -43,12 +43,16 @@ export default function Signup() {
       }
 
       await login(form.username, form.password)
-      setStep('questionnaire')
+      
+      // ALTERAÇÃO AQUI: Navega para o dashboard em vez de mudar o step interno
+      navigate('/dashboard')
+      
     } catch (err) {
       setError(err.message)
     }
   }
 
+  // Mantido para não quebrar referências, embora o handleRegister agora navegue para fora
   if (step === 'questionnaire') {
     return <Questionnaire />
   }

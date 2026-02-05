@@ -1,83 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
-import { Coffee, Leaf, ForkKnife, ChevronDown, Loader2 } from 'lucide-react'
+import { Coffee, Leaf, ForkKnife, ChevronDown, Loader2, AlertCircle, ClipboardList, Hourglass } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 export default function FoodPlan() {
   const [mealPlan, setMealPlan] = useState(null)
   const [expandedDay, setExpandedDay] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [hasAnsweredQuiz, setHasAnsweredQuiz] = useState(true)
+  const navigate = useNavigate()
 
   const weekDays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-  
   const getTodayDayName = () => weekDays[new Date().getDay()]
-
-  // Plano padrão completo com todos os 7 dias
-  const defaultPlan = [
-    {
-      day: 'Domingo',
-      meals: [
-        { name: 'Café da Manhã', items: ['Café com leite', 'Bolo caseiro', 'Frutas'] },
-        { name: 'Almoço', items: ['Frango assado', 'Arroz', 'Feijão'] },
-        { name: 'Lanche', items: ['Sorvete natural', 'Frutas vermelhas'] },
-        { name: 'Jantar', items: ['Massa', 'Molho de tomate', 'Salada'] }
-      ]
-    },
-    {
-      day: 'Segunda',
-      meals: [
-        { name: 'Café da Manhã', items: ['Ovos mexidos', 'Pão integral', 'Suco natural'] },
-        { name: 'Almoço', items: ['Frango grelhado', 'Arroz integral', 'Brócolis'] },
-        { name: 'Lanche', items: ['Maçã', 'Iogurte grego'] },
-        { name: 'Jantar', items: ['Peixe assado', 'Batata doce', 'Salada'] }
-      ]
-    },
-    {
-      day: 'Terça',
-      meals: [
-        { name: 'Café da Manhã', items: ['Aveia', 'Banana', 'Amêndoas'] },
-        { name: 'Almoço', items: ['Carne vermelha', 'Feijão', 'Arroz'] },
-        { name: 'Lanche', items: ['Iogurte natural', 'Granola'] },
-        { name: 'Jantar', items: ['Frango com legumes', 'Quinoa'] }
-      ]
-    },
-    {
-      day: 'Quarta',
-      meals: [
-        { name: 'Café da Manhã', items: ['Panqueca integral', 'Mel', 'Morango'] },
-        { name: 'Almoço', items: ['Peixe grelhado', 'Batata doce', 'Brócolis'] },
-        { name: 'Lanche', items: ['Banana', 'Amendoim'] },
-        { name: 'Jantar', items: ['Frango com batata', 'Salada'] }
-      ]
-    },
-    {
-      day: 'Quinta',
-      meals: [
-        { name: 'Café da Manhã', items: ['Iogurte', 'Granola', 'Fruta'] },
-        { name: 'Almoço', items: ['Carne moída', 'Arroz', 'Feijão'] },
-        { name: 'Lanche', items: ['Maçã', 'Castanha'] },
-        { name: 'Jantar', items: ['Peixe', 'Salada morna', 'Arroz integral'] }
-      ]
-    },
-    {
-      day: 'Sexta',
-      meals: [
-        { name: 'Café da Manhã', items: ['Ovos cozidos', 'Pão', 'Queijo'] },
-        { name: 'Almoço', items: ['Frango', 'Pasta integral', 'Legumes'] },
-        { name: 'Lanche', items: ['Suco natural', 'Biscoito integral'] },
-        { name: 'Jantar', items: ['Carne vermelha', 'Batata', 'Salada'] }
-      ]
-    },
-    {
-      day: 'Sábado',
-      meals: [
-        { name: 'Café da Manhã', items: ['Açaí', 'Granola', 'Banana'] },
-        { name: 'Almoço', items: ['Churrasco', 'Salada', 'Batata frita'] },
-        { name: 'Lanche', items: ['Fruta da estação'] },
-        { name: 'Jantar', items: ['Peixe grelhado', 'Arroz', 'Legumes'] }
-      ]
-    }
-  ]
 
   useEffect(() => {
     const loadFromAdmin = async () => {
@@ -93,47 +28,51 @@ export default function FoodPlan() {
         }
 
         if (!currentUser?.username) {
-          // Se não logado, usa plano padrão
-          setMealPlan(defaultPlan)
-          setExpandedDay(getTodayDayName())
-          setLoading(false)
+          navigate('/login')
           return
         }
 
-        // Chamada para a rota que o Administrador alimenta
+        // 1. Verificamos primeiro se o usuário já respondeu o questionário
+        const resUser = await fetch(`${apiUrl.replace(/\/$/, '')}/api/me?username=${encodeURIComponent(currentUser.username)}`)
+        if (resUser.ok) {
+          const userData = await resUser.json()
+          const pData = userData.user.questionnaire_data
+          const hData = userData.user.health_data
+          
+          // Se qualquer uma das etapas estiver vazia, bloqueamos o acesso
+          const isComplete = (pData && pData !== "{}" && pData.length > 5) && (hData && hData !== "{}" && hData.length > 5)
+          
+          if (!isComplete) {
+            setHasAnsweredQuiz(false)
+            setLoading(false)
+            return
+          }
+        }
+
+        // 2. Buscamos o plano alimentar (Sem plano padrão)
         const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(currentUser.username)}/foodplan`)
         
         if (res.ok) {
           const body = await res.json()
           
-          // Se o administrador enviou dados
-          if (body.data && Object.keys(body.data).length > 0) {
-            const planData = Array.isArray(body.data) ? body.data : (body.data.days || defaultPlan)
-            setMealPlan(planData)
+          // Se o administrador enviou dados válidos
+          if (body.data && body.data.days && body.data.days.length > 0) {
+            setMealPlan(body.data.days)
+            setExpandedDay(getTodayDayName())
           } else {
-            // Se não tiver plano do admin, usa padrão
-            setMealPlan(defaultPlan)
+            setMealPlan(null) // Plano ainda não feito pelo nutricionista
           }
-        } else {
-          // Se erro na requisição, usa padrão
-          setMealPlan(defaultPlan)
         }
-        
-        // Sempre abre o dia atual
-        setExpandedDay(getTodayDayName())
       } catch (err) {
-        console.error('Erro ao buscar plano do administrador:', err)
-        setMealPlan(defaultPlan)
-        setExpandedDay(getTodayDayName())
+        console.error('Erro ao buscar plano:', err)
+        setMealPlan(null)
       } finally {
         setLoading(false)
       }
     }
 
     loadFromAdmin()
-  }, [])
-
-  const displayPlan = mealPlan || defaultPlan
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-[#f7faff] font-marcellus text-[#333]">
@@ -146,13 +85,13 @@ export default function FoodPlan() {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-6 border-b border-[#eee] pb-6">
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold m-0 text-[#333]">Plano Alimentar</h1>
-              <p className="text-[#555] mt-2 text-base">Personalizado pelo seu administrador.</p>
+              <p className="text-[#555] mt-2 text-base">Sua dieta personalizada para atingir seus objetivos.</p>
             </div>
             
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2 bg-[#f9f4ff] px-4 py-2 rounded-lg border border-[#7B67A6]/20">
                 <Coffee size={18} className="text-[#7B67A6]" />
-                <span className="text-xs font-bold text-[#7B67A6]">Personalizado</span>
+                <span className="text-xs font-bold text-[#7B67A6]">Nutricional</span>
               </div>
             </div>
           </div>
@@ -160,12 +99,43 @@ export default function FoodPlan() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <Loader2 className="animate-spin text-[#7B67A6]" size={40} />
-              <p className="text-gray-500">Carregando seu plano exclusivo...</p>
+              <p className="text-gray-500">Consultando seu prontuário...</p>
             </div>
-          ) : displayPlan.length > 0 ? (
+          ) : !hasAnsweredQuiz ? (
+            /* VALIDAÇÃO 1: Questionário Pendente */
+            <div className="text-center py-16 px-4 border-2 border-dashed border-[#7B67A6]/20 rounded-2xl bg-[#fcfaff]">
+              <div className="bg-[#f1ebfe] w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <ClipboardList size={40} className="text-[#7B67A6]" />
+              </div>
+              <h2 className="text-2xl font-bold text-[#333] mb-3">Questionário Pendente</h2>
+              <p className="text-gray-600 max-w-md mx-auto mb-8">
+                Para que o seu nutricionista possa elaborar um plano alimentar eficiente, você precisa primeiro responder todas as etapas do questionário disponível no seu Dashboard.
+              </p>
+              <button 
+                onClick={() => navigate('/dashboard')}
+                className="px-8 py-3 bg-[#7B67A6] text-white font-bold rounded-lg hover:bg-[#665491] transition-all"
+              >
+                Ir para o Dashboard
+              </button>
+            </div>
+          ) : !mealPlan ? (
+            /* VALIDAÇÃO 2: Plano ainda não criado pelo nutricionista */
+            <div className="text-center py-16 px-4 border-2 border-dashed border-[#40804b]/20 rounded-2xl bg-[#f0f8f7]/30">
+              <div className="bg-[#f0f8f7] w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Hourglass size={40} className="text-[#40804b]" />
+              </div>
+              <h2 className="text-2xl font-bold text-[#333] mb-3">Plano em Elaboração</h2>
+              <p className="text-gray-600 max-w-md mx-auto">
+                Seu nutricionista já recebeu suas informações! Agora ele está analisando seus dados para criar o melhor plano possível. Em breve ele estará disponível aqui.
+              </p>
+              <div className="mt-8 inline-block px-4 py-2 bg-white border border-[#40804b]/20 rounded-full text-[#40804b] text-xs font-bold uppercase tracking-widest">
+                Aguarde a notificação
+              </div>
+            </div>
+          ) : (
+            /* EXIBIÇÃO DO PLANO REAL */
             <div className="space-y-3">
-              {/* Mostra todos os dias, mas apenas o dia atual expandido por padrão */}
-              {displayPlan.map((dayPlan) => {
+              {mealPlan.map((dayPlan) => {
                 const isToday = getTodayDayName() === dayPlan.day
                 const isExpanded = expandedDay === dayPlan.day
                 
@@ -214,20 +184,16 @@ export default function FoodPlan() {
                 )
               })}
             </div>
-          ) : (
-            <div className="text-center py-20 border-2 border-dashed border-gray-100 rounded-xl">
-              <p className="text-gray-400">Nenhum plano alimentar cadastrado pelo administrador ainda.</p>
-            </div>
           )}
 
-          {/* Dica de Nutrição */}
+          {/* Dica de Nutrição - Mantida para quando houver plano ou aguardando */}
           <div className="mt-10 bg-[#f0f8f7] rounded-[10px] p-6 flex flex-col sm:flex-row items-center gap-6 border border-[#ddd]">
             <div className="p-4 bg-white rounded-lg shadow-sm shrink-0 border border-[#eee]">
               <ForkKnife size={32} className="text-[#40804b]" />
             </div>
             <div className="text-center sm:text-left">
               <h3 className="text-lg font-bold text-[#40804b] m-0">Dica de Nutrição</h3>
-              <p className="text-[#555] text-sm leading-relaxed mt-1 m-0">Consulte sempre seu nutricionista para ajustes finos no plano enviado pelo administrador.</p>
+              <p className="text-[#555] text-sm leading-relaxed mt-1 m-0">A base de uma vida saudável é a consistência. Siga as orientações e valide seu check-in diariamente.</p>
             </div>
           </div>
         </div>

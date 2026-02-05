@@ -5,7 +5,30 @@ const path = require('path')
 const fs = require('fs')
 const multer = require('multer')
 
-const { init, insertSubmission, listSubmissions, createUser, getUserByUsername, updateUserQuestionnaire, getUserQuestionnaire, updateUserFields, listUsers, getCheckinsCounts, addDailyCheckin, getDailyCheckins, getDailyCheckinsForMonth, setUserFoodPlan, getUserFoodPlan, listMealTemplates, getMealTemplatesByType, createMealTemplate, deleteMealTemplate } = require('./db')
+// AJUSTE: Incluído 'updateUserHealth' na desestruturação abaixo
+const { 
+  init, 
+  insertSubmission, 
+  listSubmissions, 
+  createUser, 
+  getUserByUsername, 
+  updateUserQuestionnaire, 
+  updateUserHealth, // <--- ADICIONADO AQUI
+  getUserQuestionnaire, 
+  updateUserFields, 
+  listUsers, 
+  getCheckinsCounts, 
+  addDailyCheckin, 
+  getDailyCheckins, 
+  getDailyCheckinsForMonth, 
+  setUserFoodPlan, 
+  getUserFoodPlan, 
+  listMealTemplates, 
+  getMealTemplatesByType, 
+  createMealTemplate, 
+  deleteMealTemplate 
+} = require('./db')
+
 const { db } = require('./db')
 const bcrypt = require('bcryptjs')
 
@@ -30,6 +53,18 @@ app.use(express.json())
 app.use('/uploads', express.static(UPLOAD_DIR))
 
 init()
+
+// GARANTIA: Executa um comando para garantir que a coluna health_data exista no SQLite
+// Se ela já existir, o SQLite apenas ignorará o erro.
+db.serialize(() => {
+  db.run("ALTER TABLE users ADD COLUMN health_data JSON", (err) => {
+    if (err) {
+      // Coluna já existe, tudo ok
+    } else {
+      console.log("Coluna health_data adicionada com sucesso ao banco de dados.");
+    }
+  });
+});
 
 // Middleware simples para verificar se o usuário é admin
 async function isAdmin(req, res, next) {
@@ -56,7 +91,6 @@ app.post('/api/questionnaire', upload.any(), async (req, res) => {
     const filesObj = {}
     if (req.files && req.files.length) {
       req.files.forEach(f => {
-        // original fieldname like file_exames_laboratoriais
         filesObj[f.fieldname] = {
           filename: f.filename,
           originalname: f.originalname,
@@ -89,7 +123,6 @@ app.post('/api/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password)
     if (!match) return res.status(401).json({ error: 'Credenciais inválidas' })
 
-    // Retorna dados do usuário sem a senha
     const { password: _p, ...userSafe } = user
     res.json({ success: true, user: userSafe })
   } catch (err) {
@@ -136,15 +169,40 @@ app.get('/api/me', async (req, res) => {
   }
 })
 
-app.get('/api/questionnaire', async (req, res) => {
+// Rota para salvar a ETAPA 2 (Saúde)
+app.post('/api/save-health', async (req, res) => {
   try {
-    const rows = await listSubmissions()
-    res.json(rows)
+    const { username, answers } = req.body;
+    if (!username || !answers) {
+      return res.status(400).json({ error: 'Dados incompletos' });
+    }
+
+    // AGORA FUNCIONA: A função está importada corretamente
+    await updateUserHealth(username, answers);
+
+    res.json({ success: true, message: 'Dados de saúde salvos!' });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: err.message })
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-})
+});
+
+// Rota para salvar a ETAPA 1 (Dados Pessoais)
+app.post('/api/save-questionnaire', async (req, res) => {
+  try {
+    const { username, answers } = req.body;
+    if (!username || !answers) {
+      return res.status(400).json({ error: 'Username e respostas são obrigatórios' });
+    }
+
+    await updateUserQuestionnaire(username, answers);
+
+    res.json({ success: true, message: 'Questionário salvo com sucesso!' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao salvar questionário' });
+  }
+});
 
 // Salvar ou atualizar respostas do questionário para um usuário
 app.post('/api/questionnaire/user', async (req, res) => {
@@ -169,7 +227,6 @@ app.get('/api/questionnaire/user/:username', async (req, res) => {
     if (!username) return res.status(400).json({ error: 'username é obrigatório' })
 
     const data = await getUserQuestionnaire(username)
-    console.log(`Questionário recuperado para ${username}:`, data)
     res.json({ success: true, data: data || {} })
   } catch (err) {
     console.error('Erro ao recuperar questionário:', err)
@@ -177,7 +234,7 @@ app.get('/api/questionnaire/user/:username', async (req, res) => {
   }
 })
 
-// Adicionar daily check-in (validação de refeição)
+// Adicionar daily check-in
 app.post('/api/daily-checkin', async (req, res) => {
   try {
     const { username } = req.body || {}
@@ -196,10 +253,6 @@ app.post('/api/daily-checkin', async (req, res) => {
 app.get('/api/daily-checkins/month/:username/:year/:month', async (req, res) => {
   try {
     const { username, year, month } = req.params
-    if (!username || !year || !month) {
-      return res.status(400).json({ error: 'username, year e month são obrigatórios' })
-    }
-
     const checkins = await getDailyCheckinsForMonth(username, parseInt(year), parseInt(month))
     const dates = checkins.map(c => c.check_in_date)
     res.json({ success: true, data: dates })
@@ -213,82 +266,66 @@ app.get('/api/daily-checkins/month/:username/:year/:month', async (req, res) => 
 app.get('/api/daily-checkins/:username', async (req, res) => {
   try {
     const { username } = req.params
-    if (!username) return res.status(400).json({ error: 'username é obrigatório' })
-
     const checkins = await getDailyCheckins(username)
     const dates = checkins.map(c => c.check_in_date)
     res.json({ success: true, data: dates })
   } catch (err) {
-    console.error('Erro ao recuperar check-ins:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
-// Atualizar campos do usuário (perfil) — merge em questionnaire_data e email
+// Atualizar campos do usuário
 app.put('/api/user/:username', async (req, res) => {
   try {
     const { username } = req.params
     const fields = req.body || {}
-    if (!username) return res.status(400).json({ error: 'username é obrigatório' })
-
     await updateUserFields(username, fields)
     res.json({ success: true })
   } catch (err) {
-    console.error('Erro ao atualizar usuário:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
-// Atualizar plano alimentar de um usuário (admin pode atualizar outros)
+// Atualizar plano alimentar
 app.put('/api/user/:username/foodplan', async (req, res) => {
   try {
     const target = req.params.username
     const plan = req.body.plan || {}
-    if (!target) return res.status(400).json({ error: 'username alvo é obrigatório' })
-
-    // quem está solicitando (pode ser o próprio usuário ou admin)
     const caller = req.query.username || req.body.username || req.headers['x-username']
-    if (!caller) return res.status(401).json({ error: 'username do solicitante é obrigatório' })
-
-    // se o caller for diferente do target, requerer privilégios de admin
+    
     if (caller !== target) {
       const userCaller = await getUserByUsername(caller)
-      if (!userCaller) return res.status(401).json({ error: 'Usuário solicitante não encontrado' })
-      if (!userCaller.is_admin || Number(userCaller.is_admin) !== 1) return res.status(403).json({ error: 'Apenas administradores podem alterar plano de outro usuário' })
+      if (!userCaller || !userCaller.is_admin || Number(userCaller.is_admin) !== 1) return res.status(403).json({ error: 'Acesso negado' })
     }
 
     await setUserFoodPlan(target, plan)
     res.json({ success: true })
   } catch (err) {
-    console.error('Erro ao atualizar food plan:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
-// Obter plano alimentar de um usuário
+// Obter plano alimentar
 app.get('/api/user/:username/foodplan', async (req, res) => {
   try {
     const target = req.params.username
-    if (!target) return res.status(400).json({ error: 'username é obrigatório' })
     const plan = await getUserFoodPlan(target)
     res.json({ success: true, data: plan || {} })
   } catch (err) {
-    console.error('Erro ao recuperar food plan:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
-// Rotas administrativas básicas (protegidas por isAdmin)
+// Rotas administrativas
 app.get('/api/admin/users', isAdmin, async (req, res) => {
   try {
     const users = await listUsers()
     const counts = await getCheckinsCounts()
     const countsMap = {}
     counts.forEach(c => { countsMap[c.username] = c.count })
-    const data = users.map(u => ({ username: u.username, email: u.email, questionnaire_data: u.questionnaire_data, is_admin: u.is_admin, created_at: u.created_at, checkinCount: countsMap[u.username] || 0 }))
+    const data = users.map(u => ({ username: u.username, email: u.email, questionnaire_data: u.questionnaire_data, health_data: u.health_data, is_admin: u.is_admin, created_at: u.created_at, checkinCount: countsMap[u.username] || 0 }))
     res.json({ success: true, data })
   } catch (err) {
-    console.error('Erro na rota admin/users:', err)
     res.status(500).json({ error: err.message })
   }
 })
@@ -298,7 +335,6 @@ app.get('/api/admin/checkins', isAdmin, async (req, res) => {
     const counts = await getCheckinsCounts()
     res.json({ success: true, data: counts })
   } catch (err) {
-    console.error('Erro na rota admin/checkins:', err)
     res.status(500).json({ error: err.message })
   }
 })
@@ -306,86 +342,64 @@ app.get('/api/admin/checkins', isAdmin, async (req, res) => {
 app.get('/api/admin/user/:username/checkins', isAdmin, async (req, res) => {
   try {
     const { username } = req.params
-    if (!username) return res.status(400).json({ error: 'username é obrigatório' })
     const checkins = await getDailyCheckins(username)
     res.json({ success: true, data: checkins.map(c => c.check_in_date) })
   } catch (err) {
-    console.error('Erro ao recuperar checkins do usuário:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
-// Criar usuário admin via painel (apenas admin pode chamar)
+// Criar usuário admin
 app.post('/api/admin/create-user', isAdmin, async (req, res) => {
   try {
     const { username, password, email } = req.body || {}
-    if (!username || !password) return res.status(400).json({ error: 'username e password são obrigatórios' })
-
     const existing = await getUserByUsername(username)
     const hash = await bcrypt.hash(password, 10)
     if (existing) {
-      // atualiza senha e marca como admin
-      db.run('UPDATE users SET password = ?, email = ?, is_admin = 1 WHERE username = ?', [hash, email || existing.email || null, username], function (err) {
+      db.run('UPDATE users SET password = ?, email = ?, is_admin = 1 WHERE username = ?', [hash, email || null, username], (err) => {
         if (err) return res.status(500).json({ error: err.message })
-        return res.json({ success: true, message: 'Usuário existente atualizado e promovido a admin' })
+        res.json({ success: true })
       })
     } else {
-      // insere com is_admin = 1
-      db.run('INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, 1)', [username, email || null, hash], function (err) {
+      db.run('INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, 1)', [username, email || null, hash], (err) => {
         if (err) return res.status(500).json({ error: err.message })
-        return res.json({ success: true, message: 'Usuário admin criado' })
+        res.json({ success: true })
       })
     }
   } catch (err) {
-    console.error('Erro ao criar admin:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
-// Rotas para modelos de refeição (meal templates)
+// Meal Templates
 app.get('/api/admin/meal-templates', isAdmin, async (req, res) => {
   try {
-    const { meal_type } = req.query
-    const templates = meal_type 
-      ? await getMealTemplatesByType(meal_type)
-      : await listMealTemplates()
+    const templates = await listMealTemplates()
     res.json({ success: true, data: templates })
   } catch (err) {
-    console.error('Erro ao listar modelos de refeição:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
 app.post('/api/admin/meal-templates', isAdmin, async (req, res) => {
   try {
-    const { name, meal_type, items } = req.body || {}
-    if (!name || !meal_type || !items || !Array.isArray(items)) {
-      return res.status(400).json({ error: 'name, meal_type e items (array) são obrigatórios' })
-    }
+    const { name, meal_type, items } = req.body
     const result = await createMealTemplate(name, meal_type, items)
     res.json({ success: true, data: { id: result.id, name, meal_type, items } })
   } catch (err) {
-    console.error('Erro ao criar modelo de refeição:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
 app.delete('/api/admin/meal-templates/:id', isAdmin, async (req, res) => {
   try {
-    const { id } = req.params
-    if (!id) return res.status(400).json({ error: 'id é obrigatório' })
-    const result = await deleteMealTemplate(id)
-    if (!result.deleted) {
-      return res.status(404).json({ error: 'Modelo não encontrado' })
-    }
+    const result = await deleteMealTemplate(req.params.id)
     res.json({ success: true })
   } catch (err) {
-    console.error('Erro ao deletar modelo de refeição:', err)
     res.status(500).json({ error: err.message })
   }
 })
 
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`)
-  console.log(`Upload dir: ${UPLOAD_DIR}`)
 })

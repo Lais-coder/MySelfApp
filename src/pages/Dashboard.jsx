@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Calendar, TrendingUp, Heart } from 'lucide-react'
+import { CheckCircle2, Calendar, TrendingUp, Heart, ClipboardList, Activity } from 'lucide-react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
 
@@ -10,6 +10,10 @@ export default function Dashboard() {
   const [checkedInToday, setCheckedInToday] = useState(false)
   const [totalCheckins, setTotalCheckins] = useState(0)
   const [loading, setLoading] = useState(true)
+  
+  // Estados para controlar os dois cards independentes
+  const [showPersonalQuiz, setShowPersonalQuiz] = useState(false)
+  const [showHealthQuiz, setShowHealthQuiz] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -27,6 +31,16 @@ export default function Dashboard() {
         if (res.ok) {
           const body = await res.json()
           setUserData(body.user)
+
+          // LÓGICA ETAPA 1 (DADOS PESSOAIS)
+          const pData = body.user.questionnaire_data
+          const isPersonalEmpty = !pData || pData === "{}" || (typeof pData === 'string' && pData.length < 5)
+          setShowPersonalQuiz(isPersonalEmpty)
+
+          // LÓGICA ETAPA 2 (SAÚDE) - Só aparece se a 1 estiver feita e a 2 não
+          const hData = body.user.health_data
+          const isHealthEmpty = !hData || hData === "{}" || (typeof hData === 'string' && hData.length < 5)
+          setShowHealthQuiz(!isPersonalEmpty && isHealthEmpty)
         }
 
         // Carrega check-ins do mês
@@ -38,8 +52,6 @@ export default function Dashboard() {
         if (resCheckins.ok) {
           const bodyCheckins = await resCheckins.json()
           setTotalCheckins(bodyCheckins.data.length)
-          
-          // Verifica se já marcou hoje
           const todayDate = today.toISOString().split('T')[0]
           setCheckedInToday(bodyCheckins.data.includes(todayDate))
         }
@@ -69,7 +81,6 @@ export default function Dashboard() {
           setCheckedInToday(true)
           setTotalCheckins(prev => prev + 1)
         }
-        // Redireciona para calendário
         navigate('/calendario')
       }
     } catch (err) {
@@ -96,9 +107,50 @@ export default function Dashboard() {
           <p className="text-lg text-[#666]">Vamos acompanhar sua jornada de saúde e nutrição</p>
         </div>
 
+        {/* CARD ETAPA 1: Dados Pessoais */}
+        {showPersonalQuiz && (
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-[#7B67A6] mb-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#f1ebfe] p-3 rounded-full text-[#7B67A6]">
+                <ClipboardList size={32} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-[#333]">Etapa 1: Dados Pessoais</h3>
+                <p className="text-[#666]">Responda as perguntas iniciais para o seu nutricionista.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/questionnaire/personal')}
+              className="w-full md:w-auto px-8 py-3 bg-[#7B67A6] text-white font-bold rounded-lg hover:bg-[#665491] transition-all"
+            >
+              Responder Agora
+            </button>
+          </div>
+        )}
+
+        {/* CARD ETAPA 2: Saúde e Alimentação */}
+        {showHealthQuiz && (
+          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-[#40804b] mb-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
+            <div className="flex items-center gap-4">
+              <div className="bg-[#f0fdf4] p-3 rounded-full text-[#40804b]">
+                <Activity size={32} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-[#333]">Etapa 2: Saúde e Hábitos</h3>
+                <p className="text-[#666]">Finalize seu perfil para montarmos sua dieta personalizada.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/questionnaire/health')}
+              className="w-full md:w-auto px-8 py-3 bg-[#40804b] text-white font-bold rounded-lg hover:bg-[#346a3d] transition-all"
+            >
+              Finalizar Perfil
+            </button>
+          </div>
+        )}
+
         {/* Cards de Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Card: Check-ins este mês */}
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-[#40804b]">
             <div className="flex items-center justify-between">
               <div>
@@ -110,7 +162,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card: Status de hoje */}
           <div className={`rounded-lg shadow-md p-6 border-l-4 ${checkedInToday ? 'bg-[#f0fdf4] border-[#40804b]' : 'bg-white border-[#ddd]'}`}>
             <div className="flex items-center justify-between">
               <div>
@@ -124,7 +175,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Card: Motivação */}
           <div className="bg-gradient-to-br from-[#f9f4ff] to-[#f0f8f7] rounded-lg shadow-md p-6 border-l-4 border-[#7B67A6]">
             <div className="flex items-center justify-between">
               <div>
@@ -141,7 +191,6 @@ export default function Dashboard() {
         <div className="bg-white rounded-lg shadow-lg p-12 text-center mb-8">
           <h2 className="text-2xl font-bold text-[#333] mb-4">Validar Refeição de Hoje</h2>
           <p className="text-[#666] mb-8">Clique no botão abaixo para confirmar que você comeu conforme sua dieta! 🥗</p>
-          
           <button
             onClick={handleDailyCheckin}
             disabled={checkedInToday}
@@ -153,10 +202,6 @@ export default function Dashboard() {
           >
             {checkedInToday ? '✓ Já validado hoje!' : '✓ Validar Agora'}
           </button>
-
-          {!checkedInToday && (
-            <p className="text-[#40804b] mt-6 font-semibold">Após validar, você será direcionado ao seu calendário 📅</p>
-          )}
         </div>
 
         {/* Dicas Rápidas */}
