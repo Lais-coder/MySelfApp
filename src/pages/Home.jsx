@@ -1,14 +1,11 @@
 import { Link } from 'react-router-dom'
-// Importação dos ícones do Lucide
 import { Zap, Scale, Heart } from 'lucide-react' 
-import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
 import background from '../assets/background-image.jpg'
 
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center pt-24 pb-12 px-4 sm:px-8 lg:px-16 bg-[#D9D5A0]">
