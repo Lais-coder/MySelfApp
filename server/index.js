@@ -6,27 +6,30 @@ const fs = require('fs')
 const multer = require('multer')
 
 // AJUSTE: Incluído 'updateUserHealth' na desestruturação abaixo
-const { 
-  init, 
-  insertSubmission, 
-  listSubmissions, 
-  createUser, 
-  getUserByUsername, 
-  updateUserQuestionnaire, 
+const {
+  init,
+  insertSubmission,
+  listSubmissions,
+  createUser,
+  getUserByUsername,
+  updateUserQuestionnaire,
   updateUserHealth, // <--- ADICIONADO AQUI
-  getUserQuestionnaire, 
-  updateUserFields, 
-  listUsers, 
-  getCheckinsCounts, 
-  addDailyCheckin, 
-  getDailyCheckins, 
-  getDailyCheckinsForMonth, 
-  setUserFoodPlan, 
-  getUserFoodPlan, 
-  listMealTemplates, 
-  getMealTemplatesByType, 
-  createMealTemplate, 
-  deleteMealTemplate 
+  getUserQuestionnaire,
+  updateUserFields,
+  listUsers,
+  getCheckinsCounts,
+  addDailyCheckin,
+  getDailyCheckins,
+  getDailyCheckinsForMonth,
+  setUserFoodPlan,
+  getUserFoodPlan,
+  listMealTemplates,
+  getMealTemplatesByType,
+  createMealTemplate,
+  deleteMealTemplate,
+  getUsersWithoutFoodPlan,
+  getInactiveUsers,
+  toggleUserStatus
 } = require('./db')
 
 const { db } = require('./db')
@@ -40,7 +43,7 @@ fs.mkdirSync(UPLOAD_DIR, { recursive: true })
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random()*1e9)}-${file.originalname}`
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}-${file.originalname}`
     cb(null, unique)
   }
 })
@@ -122,6 +125,9 @@ app.post('/api/login', async (req, res) => {
 
     const match = await bcrypt.compare(password, user.password)
     if (!match) return res.status(401).json({ error: 'Credenciais inválidas' })
+
+    // Check Active Status
+    if (user.is_active === 0) return res.status(403).json({ error: 'Conta inativa. Contate o administrador.' })
 
     const { password: _p, ...userSafe } = user
     res.json({ success: true, user: userSafe })
@@ -292,7 +298,7 @@ app.put('/api/user/:username/foodplan', async (req, res) => {
     const target = req.params.username
     const plan = req.body.plan || {}
     const caller = req.query.username || req.body.username || req.headers['x-username']
-    
+
     if (caller !== target) {
       const userCaller = await getUserByUsername(caller)
       if (!userCaller || !userCaller.is_admin || Number(userCaller.is_admin) !== 1) return res.status(403).json({ error: 'Acesso negado' })
@@ -323,8 +329,28 @@ app.get('/api/admin/users', isAdmin, async (req, res) => {
     const counts = await getCheckinsCounts()
     const countsMap = {}
     counts.forEach(c => { countsMap[c.username] = c.count })
-    const data = users.map(u => ({ username: u.username, email: u.email, questionnaire_data: u.questionnaire_data, health_data: u.health_data, is_admin: u.is_admin, created_at: u.created_at, checkinCount: countsMap[u.username] || 0 }))
+    const data = users.map(u => ({
+      username: u.username,
+      email: u.email,
+      questionnaire_data: u.questionnaire_data,
+      health_data: u.health_data,
+      is_admin: u.is_admin,
+      is_active: u.is_active !== undefined ? u.is_active : 1, // Defaulting to 1 if not present
+      created_at: u.created_at,
+      checkinCount: countsMap[u.username] || 0
+    }))
     res.json({ success: true, data })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.put('/api/admin/user/:username/status', isAdmin, async (req, res) => {
+  try {
+    const { username } = req.params
+    const { is_active } = req.body
+    await toggleUserStatus(username, is_active)
+    res.json({ success: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -395,6 +421,26 @@ app.delete('/api/admin/meal-templates/:id', isAdmin, async (req, res) => {
   try {
     const result = await deleteMealTemplate(req.params.id)
     res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// Relatórios
+app.get('/api/admin/reports/no-food-plan', isAdmin, async (req, res) => {
+  try {
+    const users = await getUsersWithoutFoodPlan()
+    res.json({ success: true, data: users })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.get('/api/admin/reports/inactive', isAdmin, async (req, res) => {
+  try {
+    const days = parseInt(req.query.days || '7')
+    const users = await getInactiveUsers(days)
+    res.json({ success: true, data: users })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

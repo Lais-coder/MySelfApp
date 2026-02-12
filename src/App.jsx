@@ -10,11 +10,25 @@ import Calendar from './pages/Calendar'
 import ProtectedRoute from './components/Common/ProtectedRoute'
 
 // Importando o componente principal do questionário
-import Questionnaire from './components/Questionnaire/index' 
+import Questionnaire from './components/Questionnaire/index'
+import AdminNoFoodPlan from './pages/AdminNoFoodPlan'
+import AdminInactiveUsers from './pages/AdminInactiveUsers'
+import AdminAllUsers from './pages/AdminAllUsers'
+import { Toaster } from 'react-hot-toast'
 
 function App() {
   return (
     <BrowserRouter>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: '#f9f4ff',
+            color: '#333',
+            border: '1px solid #7c64a4',
+          }
+        }}
+      />
       <Routes>
         {/* Rotas Públicas */}
         <Route path="/" element={<Home />} />
@@ -23,20 +37,23 @@ function App() {
 
         {/* Rotas Protegidas */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        
+
         {/* ETAPA 1: Dados Pessoais */}
-        <Route 
-          path="/questionnaire/personal" 
-          element={<ProtectedRoute><Questionnaire type="personal" /></ProtectedRoute>} 
+        <Route
+          path="/questionnaire/personal"
+          element={<ProtectedRoute><Questionnaire type="personal" /></ProtectedRoute>}
         />
 
         {/* ETAPA 2: Saúde e Alimentação */}
-        <Route 
-          path="/questionnaire/health" 
-          element={<ProtectedRoute><Questionnaire type="health" /></ProtectedRoute>} 
+        <Route
+          path="/questionnaire/health"
+          element={<ProtectedRoute><Questionnaire type="health" /></ProtectedRoute>}
         />
 
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+        <Route path="/admin/no-food-plan" element={<ProtectedRoute><AdminNoFoodPlan /></ProtectedRoute>} />
+        <Route path="/admin/inactive-users" element={<ProtectedRoute><AdminInactiveUsers /></ProtectedRoute>} />
+        <Route path="/admin/users" element={<ProtectedRoute><AdminAllUsers /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="/plano-alimentar" element={<ProtectedRoute><FoodPlan /></ProtectedRoute>} />
         <Route path="/calendario" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />

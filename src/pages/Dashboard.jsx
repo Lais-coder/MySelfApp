@@ -10,7 +10,7 @@ export default function Dashboard() {
   const [checkedInToday, setCheckedInToday] = useState(false)
   const [totalCheckins, setTotalCheckins] = useState(0)
   const [loading, setLoading] = useState(true)
-  
+
   // Estados para controlar os dois cards independentes
   const [showPersonalQuiz, setShowPersonalQuiz] = useState(false)
   const [showHealthQuiz, setShowHealthQuiz] = useState(false)
@@ -20,9 +20,15 @@ export default function Dashboard() {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
         const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
-        
+
         if (!currentUser?.username) {
           navigate('/login')
+          return
+        }
+
+        // Se for admin, redireciona para o painel administrativo
+        if (currentUser.is_admin && Number(currentUser.is_admin) === 1) {
+          navigate('/admin')
           return
         }
 
@@ -47,7 +53,7 @@ export default function Dashboard() {
         const today = new Date()
         const year = today.getFullYear()
         const month = today.getMonth() + 1
-        
+
         const resCheckins = await fetch(`${apiUrl.replace(/\/$/, '')}/api/daily-checkins/month/${encodeURIComponent(currentUser.username)}/${year}/${month}`)
         if (resCheckins.ok) {
           const bodyCheckins = await resCheckins.json()
@@ -100,7 +106,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#f7faff] font-marcellus text-[#333]">
       <Navbar />
       <div className="max-w-[1200px] w-[90%] mx-auto py-8 mt-14 mb-20">
-        
+
         {/* Boas-vindas */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-[#7B67A6] mb-2">Bem-vindo, {userData?.username}! 👋</h1>
@@ -194,11 +200,10 @@ export default function Dashboard() {
           <button
             onClick={handleDailyCheckin}
             disabled={checkedInToday}
-            className={`px-12 py-4 rounded-lg font-bold text-lg transition-all ${
-              checkedInToday
+            className={`px-12 py-4 rounded-lg font-bold text-lg transition-all ${checkedInToday
                 ? 'bg-[#ddd] text-[#999] cursor-not-allowed'
                 : 'bg-gradient-to-r from-[#40804b] to-[#5a9d5f] text-white hover:shadow-lg hover:scale-105'
-            }`}
+              }`}
           >
             {checkedInToday ? '✓ Já validado hoje!' : '✓ Validar Agora'}
           </button>

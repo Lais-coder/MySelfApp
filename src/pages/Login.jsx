@@ -20,13 +20,17 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    ;(async () => {
-      try {
-        await login(formData.username, formData.password)
-        navigate('/dashboard')
-      } catch (err) {
-      }
-    })()
+      ; (async () => {
+        try {
+          const user = await login(formData.username, formData.password)
+          if (user.is_admin && Number(user.is_admin) === 1) {
+            navigate('/admin')
+          } else {
+            navigate('/dashboard')
+          }
+        } catch (err) {
+        }
+      })()
   }
 
   return (

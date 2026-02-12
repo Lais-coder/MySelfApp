@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { User, UtensilsCrossed, Calendar, Settings } from 'lucide-react' 
+import { User, UtensilsCrossed, Calendar, Settings, AlertCircle, UserX, LayoutDashboard, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import logo from '../../assets/logo.png'
 
@@ -13,8 +13,14 @@ export default function Navbar() {
       const userStr = localStorage.getItem('user')
       if (userStr) {
         const u = JSON.parse(userStr)
-        if (u?.username) setHomeTarget('/dashboard')
-        if (u?.is_admin && Number(u.is_admin) === 1) setIsAdmin(true)
+        if (u?.username) {
+          if (u.is_admin && Number(u.is_admin) === 1) {
+            setHomeTarget('/admin')
+            setIsAdmin(true)
+          } else {
+            setHomeTarget('/dashboard')
+          }
+        }
       }
     } catch (e) {
       setHomeTarget('/')
@@ -28,9 +34,9 @@ export default function Navbar() {
       {/* Lado Esquerdo: Logo */}
       <div className="flex items-center">
         <Link to={homeTarget} className="flex items-center group">
-          <img 
-            src={logo} 
-            alt="Logo" 
+          <img
+            src={logo}
+            alt="Logo"
             className="mr-2 md:mr-4 h-8 md:h-10 rounded-full transition-transform group-hover:scale-110"
           />
           <span className="font-marcellus text-base md:text-lg font-bold text-[#1f1d1d]">
@@ -38,57 +44,104 @@ export default function Navbar() {
           </span>
         </Link>
       </div>
-      
+
       {/* Lado Direito: Navegação */}
       <div className="flex items-center gap-2 md:gap-6">
 
-        {/* Plano Alimentar */}
-        <Link 
-          to="/plano-alimentar" 
-          className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
-            ${isActive('/plano-alimentar') 
-              ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]' 
-              : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
-          title="Plano Alimentar"
-        >
-          <UtensilsCrossed size={22} className="md:hidden" />
-          <span className="hidden md:block font-marcellus font-medium">Plano Alimentar</span>
-        </Link>
+        {/* Links para Usuário Comum (Não Admin) */}
+        {!isAdmin && (
+          <>
+            {/* Plano Alimentar */}
+            <Link
+              to="/plano-alimentar"
+              className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
+                ${isActive('/plano-alimentar')
+                  ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]'
+                  : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
+              title="Plano Alimentar"
+            >
+              <UtensilsCrossed size={22} className="md:hidden" />
+              <span className="hidden md:block font-marcellus font-medium">Plano Alimentar</span>
+            </Link>
 
-        {/* Calendário */}
-        <Link 
-          to="/calendario" 
-          className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
-            ${isActive('/calendario') 
-              ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]' 
-              : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
-          title="Calendário"
-        >
-          <Calendar size={22} className="md:hidden" />
-          <span className="hidden md:block font-marcellus font-medium">Calendário</span>
-        </Link>
+            {/* Calendário */}
+            <Link
+              to="/calendario"
+              className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
+                ${isActive('/calendario')
+                  ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]'
+                  : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
+              title="Calendário"
+            >
+              <Calendar size={22} className="md:hidden" />
+              <span className="hidden md:block font-marcellus font-medium">Calendário</span>
+            </Link>
+          </>
+        )}
 
-        {/* Admin */}
+        {/* Links para Admin */}
         {isAdmin && (
-          <Link 
-            to="/admin" 
-            className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
-              ${isActive('/admin') 
-                ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]' 
-                : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
-            title="Admin"
-          >
-            <Settings size={22} className="md:hidden" />
-            <span className="hidden md:block font-marcellus font-medium">Admin</span>
-          </Link>
+          <>
+            {/* Dashboard Link (Painel) */}
+            <Link
+              to="/admin"
+              className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
+                ${isActive('/admin') && location.pathname === '/admin'
+                  ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]'
+                  : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
+              title="Painel"
+            >
+              <LayoutDashboard size={22} className="md:hidden" />
+              <span className="hidden md:block font-marcellus font-medium">Painel</span>
+            </Link>
+
+            {/* Sem Plano */}
+            <Link
+              to="/admin/no-food-plan"
+              className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
+                ${isActive('/admin/no-food-plan')
+                  ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]'
+                  : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
+              title="Sem Plano"
+            >
+              <AlertCircle size={22} className="md:hidden" />
+              <span className="hidden md:block font-marcellus font-medium">Sem Plano</span>
+            </Link>
+
+            {/* Alunos (Todos) */}
+            <Link
+              to="/admin/users"
+              className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
+                ${isActive('/admin/users')
+                  ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]'
+                  : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
+              title="Alunos"
+            >
+              <Users size={22} className="md:hidden" />
+              <span className="hidden md:block font-marcellus font-medium">Alunos</span>
+            </Link>
+
+            {/* Inativos */}
+            <Link
+              to="/admin/inactive-users"
+              className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 
+                ${isActive('/admin/inactive-users')
+                  ? 'bg-[#f0f8f7] md:bg-transparent text-[#40804b]'
+                  : 'text-[#1f1d1d] hover:text-[#40804b] md:hover:bg-transparent'}`}
+              title="Inativos"
+            >
+              <UserX size={22} className="md:hidden" />
+              <span className="hidden md:block font-marcellus font-medium">Inativos</span>
+            </Link>
+          </>
         )}
 
         {/* Perfil - Mantive o círculo pois é um elemento de avatar */}
-        <Link 
-          to="/profile" 
+        <Link
+          to="/profile"
           className={`flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-full transition-all overflow-hidden border 
-            ${isActive('/profile') 
-              ? 'bg-[#40804b] text-white border-[#40804b]' 
+            ${isActive('/profile')
+              ? 'bg-[#40804b] text-white border-[#40804b]'
               : 'bg-[#e0e8f0] text-[#999] border-gray-200 hover:bg-[#40804b] hover:text-white'}`}
         >
           <User size={20} className="md:size-[24px] text-inherit" />

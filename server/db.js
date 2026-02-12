@@ -32,9 +32,14 @@ const init = () => {
         health_data JSON,
         questionnaire_updated_at DATETIME,
         is_admin INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `)
+    // Migration manual para garantir coluna is_active em bancos existentes
+    db.run("ALTER TABLE users ADD COLUMN is_active INTEGER DEFAULT 1", (err) => {
+      // Ignora erro se coluna já existe
+    })
     db.run(`
       CREATE TABLE IF NOT EXISTS daily_checkins (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,10 +181,10 @@ const updateUserFields = (username, fields) => {
 
 const listUsers = () => {
   return new Promise((resolve, reject) => {
-    db.all('SELECT id, username, email, questionnaire_data, health_data, questionnaire_updated_at, is_admin, created_at FROM users ORDER BY created_at DESC', (err, rows) => {
+    db.all('SELECT id, username, email, questionnaire_data, health_data, questionnaire_updated_at, is_admin, is_active, created_at FROM users ORDER BY created_at DESC', (err, rows) => {
       if (err) return reject(err)
-      const parsed = rows.map(r => ({ 
-        ...r, 
+      const parsed = rows.map(r => ({
+        ...r,
         questionnaire_data: JSON.parse(r.questionnaire_data || '{}'),
         health_data: JSON.parse(r.health_data || '{}')
       }))
@@ -222,7 +227,7 @@ const getDailyCheckinsForMonth = (username, year, month) => {
     const nextMonth = month === 12 ? 1 : month + 1
     const nextYear = month === 12 ? year + 1 : year
     const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
-    
+
     db.all(
       'SELECT check_in_date FROM daily_checkins WHERE username = ? AND check_in_date >= ? AND check_in_date < ? ORDER BY check_in_date',
       [username, startDate, endDate],
@@ -278,6 +283,47 @@ const deleteMealTemplate = (id) => {
   })
 }
 
+const getUsersWithoutFoodPlan = () => {
+  return new Promise((resolve, reject) => {
+    db.all("SELECT id, username, email, created_at, food_plan FROM users WHERE food_plan IS NULL OR food_plan = '{}' OR food_plan = ''", (err, rows) => {
+      if (err) return reject(err)
+      resolve(rows)
+    })
+  })
+}
+
+const getInactiveUsers = (days) => {
+  return new Promise((resolve, reject) => {
+    const limitDate = new Date()
+    limitDate.setDate(limitDate.getDate() - days)
+    const limitDateStr = limitDate.toISOString().split('T')[0]
+
+    const query = `
+      SELECT u.id, u.username, u.email, u.created_at, MAX(d.check_in_date) as last_checkin
+      FROM users u
+      LEFT JOIN daily_checkins d ON u.username = d.username
+      GROUP BY u.id
+      HAVING last_checkin < ? OR last_checkin IS NULL
+      ORDER BY last_checkin ASC
+    `
+
+    db.all(query, [limitDateStr], (err, rows) => {
+      if (err) return reject(err)
+      resolve(rows)
+    })
+  })
+}
+
+const toggleUserStatus = (username, isActive) => {
+  return new Promise((resolve, reject) => {
+    const stmt = db.prepare('UPDATE users SET is_active = ? WHERE username = ?')
+    stmt.run(isActive ? 1 : 0, username, function (err) {
+      if (err) return reject(err)
+      resolve({ success: true })
+    })
+  })
+}
+
 module.exports = {
   db,
   init,
@@ -299,5 +345,8 @@ module.exports = {
   listMealTemplates,
   getMealTemplatesByType,
   createMealTemplate,
-  deleteMealTemplate
+  deleteMealTemplate,
+  getUsersWithoutFoodPlan,
+  getInactiveUsers,
+  toggleUserStatus
 }
