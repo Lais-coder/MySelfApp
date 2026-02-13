@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useLocation, Link, useNavigate } from 'react-router-dom'
-import { 
-  User, 
-  Calendar as CalendarIcon, 
-  Scale, 
-  Ruler, 
-  Target, 
-  Dumbbell, 
-  Ban, 
-  Moon, 
-  Edit3, 
+import {
+  User,
+  Calendar as CalendarIcon,
+  Scale,
+  Ruler,
+  Target,
+  Dumbbell,
+  Ban,
+  Moon,
+  Edit3,
   LogOut,
   Check,
   X,
@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
+import { useAuth } from '../context/AuthContext'
 
 // Importando a mesma lógica de fases do seu Calendário
 const MOTIVATION_PHASES = [
@@ -37,6 +38,7 @@ function getMotivationPhase(day) {
 }
 
 export default function Profile() {
+  const { logout } = useAuth()
   const location = useLocation()
   const [userAnswers, setUserAnswers] = useState({})
   const [userData, setUserData] = useState(null)
@@ -52,9 +54,9 @@ export default function Profile() {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
         let currentUser = null
         try {
-          const userStr = localStorage.getItem('user')
+          const userStr = localStorage.getItem('user_data')
           if (userStr) currentUser = JSON.parse(userStr)
-        } catch (e) {}
+        } catch (e) { }
 
         if (!currentUser?.username) return
 
@@ -101,7 +103,7 @@ export default function Profile() {
   const phase = getMotivationPhase(totalCheckins)
 
   const handleLogout = () => {
-    localStorage.removeItem('user')
+    logout()
     navigate('/')
   }
 
@@ -113,15 +115,15 @@ export default function Profile() {
   const handleSaveField = async (field) => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-      const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+      const currentUser = JSON.parse(localStorage.getItem('user_data') || 'null')
       if (!currentUser?.username) return
 
       // objetivo_principal também pertence à rota de saúde (Etapa 2)
       const healthFields = ['atividade_fisica', 'objetivo_principal']
       const isHealth = healthFields.includes(field)
       const endpoint = isHealth ? '/api/save-health' : `/api/user/${encodeURIComponent(currentUser.username)}`
-      
-      const payload = isHealth 
+
+      const payload = isHealth
         ? { username: currentUser.username, answers: { ...userAnswers, [field]: form[field] } }
         : { [field]: form[field] }
 
@@ -149,7 +151,7 @@ export default function Profile() {
       <Navbar />
       <div className="max-w-[1200px] w-[90%] mx-auto py-8 mt-14">
         <div className="bg-white p-5 rounded-[10px] shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
-          
+
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-4">
             <div className="flex items-center">
               <div className="w-[100px] h-[100px] bg-[#e0e8f0] rounded-full flex items-center justify-center text-4xl font-bold text-[#999] mr-5">

@@ -34,23 +34,23 @@ export default function MealTemplateModal({
         <div className="p-6">
           <div className="mb-6">
             <h3 className="font-semibold text-gray-800 mb-3 text-base">Selecionar modelo existente</h3>
-            {loadingTemplates ? <p className="text-gray-500 text-base">Carregando...</p> : 
-              mealTemplates.filter(t => t.meal_type === planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name).length === 0 ? 
-              <p className="text-gray-500 text-base">Nenhum modelo disponível para esta refeição.</p> : 
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {mealTemplates.filter(t => t.meal_type === planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name).map(t => (
-                  <div key={t.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-indigo-400 transition-all">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800 text-base">{t.name}</p>
-                      <p className="text-sm text-gray-500 mt-1">{t.items.join(' • ')}</p>
+            {loadingTemplates ? <p className="text-gray-500 text-base">Carregando...</p> :
+              mealTemplates.filter(t => t.meal_type === planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name).length === 0 ?
+                <p className="text-gray-500 text-base">Nenhum modelo disponível para esta refeição.</p> :
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {mealTemplates.filter(t => t.meal_type === planObj.days[selectedMealContext.dayIndex]?.meals[selectedMealContext.mealIndex]?.name).map(t => (
+                    <div key={t.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-indigo-400 transition-all">
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-800 text-base">{t.name}</p>
+                        <p className="text-sm text-gray-500 mt-1">{t.items.join(' • ')}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleUseTemplate(t)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-semibold">Usar</button>
+                        <button onClick={() => handleDeleteTemplate(t.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleUseTemplate(t)} className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-semibold">Usar</button>
-                      <button onClick={() => handleDeleteTemplate(t.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
             }
           </div>
 

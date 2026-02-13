@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Common/Navbar'
 import Footer from '../components/Common/Footer'
-import Sidebar from '../components/Common/Sidebar' 
+import Sidebar from '../components/Common/Sidebar'
 import { Coffee, Leaf, ForkKnife, Loader2, ClipboardList, Hourglass } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -21,11 +21,11 @@ export default function FoodPlan() {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
         let currentUser = null
-        
-        try { 
-          currentUser = JSON.parse(localStorage.getItem('user') || 'null') 
-        } catch (e) { 
-          currentUser = null 
+
+        try {
+          currentUser = JSON.parse(localStorage.getItem('user_data') || 'null')
+        } catch (e) {
+          currentUser = null
         }
 
         if (!currentUser?.username) {
@@ -39,7 +39,7 @@ export default function FoodPlan() {
           const pData = userData.user.questionnaire_data
           const hData = userData.user.health_data
           const isComplete = (pData && pData !== "{}" && pData.length > 5) && (hData && hData !== "{}" && hData.length > 5)
-          
+
           if (!isComplete) {
             setHasAnsweredQuiz(false)
             setLoading(false)
@@ -48,7 +48,7 @@ export default function FoodPlan() {
         }
 
         const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(currentUser.username)}/foodplan`)
-        
+
         if (res.ok) {
           const body = await res.json()
           if (body.data && body.data.days && body.data.days.length > 0) {
@@ -77,13 +77,13 @@ export default function FoodPlan() {
 
       <div className="max-w-[1200px] w-[90%] mx-auto py-8 mt-14 mb-20">
         <div className="bg-white p-5 md:p-8 rounded-[10px] shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
-          
+
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-6 border-b border-[#eee] pb-6">
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold m-0 text-[#333]">Plano Alimentar</h1>
               <p className="text-[#555] mt-2 text-base">Sua dieta personalizada para atingir seus objetivos.</p>
             </div>
-            
+
             <div className="flex flex-wrap gap-3">
               <div className="flex items-center gap-2 bg-[#f9f4ff] px-4 py-2 rounded-lg border border-[#7B67A6]/20">
                 <Coffee size={18} className="text-[#7B67A6]" />
@@ -106,7 +106,7 @@ export default function FoodPlan() {
               <p className="text-gray-600 max-w-md mx-auto mb-8">
                 Para que o seu nutricionista possa elaborar um plano alimentar eficiente, você precisa primeiro responder todas as etapas do questionário disponível no seu Dashboard.
               </p>
-              <button 
+              <button
                 onClick={() => navigate('/dashboard')}
                 className="px-8 py-3 bg-[#7B67A6] text-white font-bold rounded-lg hover:bg-[#665491] transition-all"
               >
@@ -130,7 +130,7 @@ export default function FoodPlan() {
             <div className="flex flex-col md:flex-row gap-8">
               <aside className="md:w-1/4">
                 <h3 className="text-[10px] font-bold text-[#999] uppercase tracking-wider mb-4 px-1">Selecione o dia</h3>
-                <Sidebar 
+                <Sidebar
                   days={mealPlan}
                   activeDay={activeDay}
                   onSelectDay={setActiveDay}

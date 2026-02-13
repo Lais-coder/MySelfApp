@@ -19,7 +19,7 @@ export default function Dashboard() {
     const load = async () => {
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-        const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+        const currentUser = JSON.parse(localStorage.getItem('user_data') || 'null')
 
         if (!currentUser?.username) {
           navigate('/login')
@@ -73,7 +73,7 @@ export default function Dashboard() {
   const handleDailyCheckin = async () => {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
-      const currentUser = JSON.parse(localStorage.getItem('user') || 'null')
+      const currentUser = JSON.parse(localStorage.getItem('user_data') || 'null')
 
       const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/daily-checkin`, {
         method: 'POST',
@@ -113,44 +113,23 @@ export default function Dashboard() {
           <p className="text-lg text-[#666]">Vamos acompanhar sua jornada de saúde e nutrição</p>
         </div>
 
-        {/* CARD ETAPA 1: Dados Pessoais */}
-        {showPersonalQuiz && (
+        {/* CARD QUESTIONÁRIO (Se não respondeu tudo) */}
+        {(showPersonalQuiz || showHealthQuiz) && (
           <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-[#7B67A6] mb-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
             <div className="flex items-center gap-4">
               <div className="bg-[#f1ebfe] p-3 rounded-full text-[#7B67A6]">
                 <ClipboardList size={32} />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-[#333]">Etapa 1: Dados Pessoais</h3>
-                <p className="text-[#666]">Responda as perguntas iniciais para o seu nutricionista.</p>
+                <h3 className="text-xl font-bold text-[#333]">Questionário de Anamnese</h3>
+                <p className="text-[#666]">Responda às perguntas para montarmos sua dieta personalizada.</p>
               </div>
             </div>
             <button
-              onClick={() => navigate('/questionnaire/personal')}
+              onClick={() => navigate('/questionnaire')}
               className="w-full md:w-auto px-8 py-3 bg-[#7B67A6] text-white font-bold rounded-lg hover:bg-[#665491] transition-all"
             >
               Responder Agora
-            </button>
-          </div>
-        )}
-
-        {/* CARD ETAPA 2: Saúde e Alimentação */}
-        {showHealthQuiz && (
-          <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-[#40804b] mb-8 flex flex-col md:flex-row items-center justify-between gap-4 transition-all">
-            <div className="flex items-center gap-4">
-              <div className="bg-[#f0fdf4] p-3 rounded-full text-[#40804b]">
-                <Activity size={32} />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-[#333]">Etapa 2: Saúde e Hábitos</h3>
-                <p className="text-[#666]">Finalize seu perfil para montarmos sua dieta personalizada.</p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/questionnaire/health')}
-              className="w-full md:w-auto px-8 py-3 bg-[#40804b] text-white font-bold rounded-lg hover:bg-[#346a3d] transition-all"
-            >
-              Finalizar Perfil
             </button>
           </div>
         )}
@@ -201,8 +180,8 @@ export default function Dashboard() {
             onClick={handleDailyCheckin}
             disabled={checkedInToday}
             className={`px-12 py-4 rounded-lg font-bold text-lg transition-all ${checkedInToday
-                ? 'bg-[#ddd] text-[#999] cursor-not-allowed'
-                : 'bg-gradient-to-r from-[#40804b] to-[#5a9d5f] text-white hover:shadow-lg hover:scale-105'
+              ? 'bg-[#ddd] text-[#999] cursor-not-allowed'
+              : 'bg-gradient-to-r from-[#40804b] to-[#5a9d5f] text-white hover:shadow-lg hover:scale-105'
               }`}
           >
             {checkedInToday ? '✓ Já validado hoje!' : '✓ Validar Agora'}

@@ -6,18 +6,36 @@ export const AuthContext = createContext()
 // Provedor de autenticação
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Começa em true para verificação inicial
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('user')
-      if (raw) {
-        setUser(JSON.parse(raw))
+    const initAuth = async () => {
+      try {
+        const token = localStorage.getItem('user_token')
+        const savedUser = localStorage.getItem('user_data')
+
+        if (token && savedUser) {
+          // Validar o token chamando o backend
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000'
+          const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/me?username=${encodeURIComponent(token)}`)
+
+          if (res.ok) {
+            const body = await res.json()
+            setUser(body.user)
+          } else {
+            // Token inválido ou expirado
+            localStorage.clear()
+            setUser(null)
+          }
+        }
+      } catch (e) {
+        console.warn('Erro ao inicializar autenticação:', e)
+      } finally {
+        setLoading(false)
       }
-    } catch (e) {
-      console.warn('Erro ao ler user do localStorage', e)
     }
+    initAuth()
   }, [])
 
   const login = async (username, password) => {
@@ -39,9 +57,16 @@ export function AuthProvider({ children }) {
       }
 
       const data = await res.json()
-      const userData = data.user || { username }
+      const userData = data.user
+      const token = data.token
+
       setUser(userData)
+      localStorage.setItem('user_token', token)
+      localStorage.setItem('user_data', JSON.stringify(userData))
+
+      // Manter retrocompatibilidade se outros componentes usarem apenas 'user'
       localStorage.setItem('user', JSON.stringify(userData))
+
       return userData
     } catch (err) {
       setError(err.message)
@@ -53,7 +78,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem('user')
+    localStorage.clear()
   }
 
   const value = {

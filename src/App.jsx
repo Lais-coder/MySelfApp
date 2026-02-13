@@ -38,16 +38,10 @@ function App() {
         {/* Rotas Protegidas */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
-        {/* ETAPA 1: Dados Pessoais */}
+        {/* Questionário Unificado (Etapa 1 + Etapa 2) */}
         <Route
-          path="/questionnaire/personal"
-          element={<ProtectedRoute><Questionnaire type="personal" /></ProtectedRoute>}
-        />
-
-        {/* ETAPA 2: Saúde e Alimentação */}
-        <Route
-          path="/questionnaire/health"
-          element={<ProtectedRoute><Questionnaire type="health" /></ProtectedRoute>}
+          path="/questionnaire"
+          element={<ProtectedRoute><Questionnaire /></ProtectedRoute>}
         />
 
         <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />

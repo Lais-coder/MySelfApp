@@ -31,7 +31,7 @@ export default function AdminNoFoodPlan() {
 
     const load = async () => {
         try {
-            const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+            const adminUser = JSON.parse(localStorage.getItem('user_data') || 'null')
             if (!adminUser?.is_admin || Number(adminUser.is_admin) !== 1) {
                 navigate('/dashboard')
                 return
@@ -57,7 +57,7 @@ export default function AdminNoFoodPlan() {
     const loadMealTemplates = async () => {
         setLoadingTemplates(true)
         try {
-            const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+            const adminUser = JSON.parse(localStorage.getItem('user_data') || 'null')
             const url = new URL(`${apiUrl.replace(/\/$/, '')}/api/admin/meal-templates`)
             url.searchParams.set('username', adminUser?.username)
             const res = await fetch(url.toString())
@@ -93,7 +93,7 @@ export default function AdminNoFoodPlan() {
     const handleSavePlan = async () => {
         if (!validatePlan()) return
         try {
-            const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+            const adminUser = JSON.parse(localStorage.getItem('user_data') || 'null')
             const res = await fetch(`${apiUrl.replace(/\/$/, '')}/api/user/${encodeURIComponent(editingUser)}/foodplan?username=${encodeURIComponent(adminUser?.username)}`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan: planObj })
             })
@@ -110,9 +110,6 @@ export default function AdminNoFoodPlan() {
             <Navbar />
             <div className="max-w-[1200px] w-[90%] mx-auto py-8 mt-14 mb-20 animate-fade-in">
                 <div className="flex items-center gap-3 mb-6">
-                    <button onClick={() => navigate('/admin')} className="text-[#666] hover:text-[#40804b] transition-colors">
-                        &larr; Voltar
-                    </button>
                     <h1 className="text-3xl font-bold text-[#40804b]">Usuários sem Plano Alimentar</h1>
                 </div>
 

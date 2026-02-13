@@ -324,6 +324,34 @@ const toggleUserStatus = (username, isActive) => {
   })
 }
 
+const deleteUser = (username) => {
+  return new Promise((resolve, reject) => {
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION')
+
+      // Remove check-ins
+      db.run('DELETE FROM daily_checkins WHERE username = ?', [username], (err) => {
+        if (err) {
+          db.run('ROLLBACK')
+          return reject(err)
+        }
+
+        // Remove submissions/questionnaire history if exists (optional, table submissions uses name/email but not username directly linked in schema shown, skipping for now based on snippet)
+
+        // Remove user
+        db.run('DELETE FROM users WHERE username = ?', [username], function (err) {
+          if (err) {
+            db.run('ROLLBACK')
+            return reject(err)
+          }
+          db.run('COMMIT')
+          resolve({ success: true, deleted: this.changes > 0 })
+        })
+      })
+    })
+  })
+}
+
 module.exports = {
   db,
   init,
@@ -348,5 +376,6 @@ module.exports = {
   deleteMealTemplate,
   getUsersWithoutFoodPlan,
   getInactiveUsers,
-  toggleUserStatus
+  toggleUserStatus,
+  deleteUser
 }

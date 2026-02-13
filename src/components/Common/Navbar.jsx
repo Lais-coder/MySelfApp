@@ -2,30 +2,28 @@ import { Link, useLocation } from 'react-router-dom'
 import { User, UtensilsCrossed, Calendar, Settings, AlertCircle, UserX, LayoutDashboard, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import logo from '../../assets/logo.png'
+import { useAuth } from '../../context/AuthContext'
 
 export default function Navbar() {
+  const { user } = useAuth()
   const [homeTarget, setHomeTarget] = useState('/')
   const [isAdmin, setIsAdmin] = useState(false)
   const location = useLocation()
 
   useEffect(() => {
-    try {
-      const userStr = localStorage.getItem('user')
-      if (userStr) {
-        const u = JSON.parse(userStr)
-        if (u?.username) {
-          if (u.is_admin && Number(u.is_admin) === 1) {
-            setHomeTarget('/admin')
-            setIsAdmin(true)
-          } else {
-            setHomeTarget('/dashboard')
-          }
-        }
+    if (user) {
+      if (user.is_admin && Number(user.is_admin) === 1) {
+        setHomeTarget('/admin')
+        setIsAdmin(true)
+      } else {
+        setHomeTarget('/dashboard')
+        setIsAdmin(false)
       }
-    } catch (e) {
+    } else {
       setHomeTarget('/')
+      setIsAdmin(false)
     }
-  }, [])
+  }, [user])
 
   const isActive = (path) => location.pathname === path
 

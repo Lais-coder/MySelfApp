@@ -13,7 +13,7 @@ export default function AdminInactiveUsers() {
     const load = async (daysParam) => {
         setLoading(true)
         try {
-            const adminUser = JSON.parse(localStorage.getItem('user') || 'null')
+            const adminUser = JSON.parse(localStorage.getItem('user_data') || 'null')
             if (!adminUser?.is_admin || Number(adminUser.is_admin) !== 1) {
                 navigate('/dashboard')
                 return

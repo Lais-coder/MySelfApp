@@ -54,8 +54,8 @@ export default function ConfirmStatusModal({ isOpen, onClose, onConfirm, userNam
                     <button
                         onClick={onConfirm}
                         className={`px-4 py-2 text-white font-bold rounded-lg shadow-md transition-transform active:scale-95 flex items-center gap-2 ${isActivating
-                                ? 'bg-green-600 hover:bg-green-700'
-                                : 'bg-red-600 hover:bg-red-700'
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-red-600 hover:bg-red-700'
                             }`}
                     >
                         {isActivating ? 'Confirmar Ativação' : 'Confirmar Bloqueio'}

@@ -1,18 +1,18 @@
 import React from 'react';
 import { AlertCircle, Plus, Trash2, Check } from 'lucide-react';
 
-export default function FoodPlanModal({ 
-  editingUser, 
-  setModalOpen, 
-  validationErrors, 
-  weekDays, 
-  currentDayStep, 
-  setCurrentDayStep, 
-  planObj, 
-  setPlanObj, 
-  setSelectedMealContext, 
-  setShowTemplateModal, 
-  handleSavePlan 
+export default function FoodPlanModal({
+  editingUser,
+  setModalOpen,
+  validationErrors,
+  weekDays,
+  currentDayStep,
+  setCurrentDayStep,
+  planObj,
+  setPlanObj,
+  setSelectedMealContext,
+  setShowTemplateModal,
+  handleSavePlan
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -44,11 +44,10 @@ export default function FoodPlanModal({
                 <button
                   key={idx}
                   onClick={() => setCurrentDayStep(idx)}
-                  className={`flex-1 mx-1 py-3 rounded-lg font-semibold text-sm transition-all ${
-                    currentDayStep === idx ? 'bg-[#7c64a4] text-white shadow-md' : 
-                    planObj.days?.[idx]?.meals?.every(m => m.items?.some(i => i.trim())) ? 'bg-green-100 text-green-700 border-2 border-green-400' : 
-                    'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className={`flex-1 mx-1 py-3 rounded-lg font-semibold text-sm transition-all ${currentDayStep === idx ? 'bg-[#7c64a4] text-white shadow-md' :
+                      planObj.days?.[idx]?.meals?.every(m => m.items?.some(i => i.trim())) ? 'bg-green-100 text-green-700 border-2 border-green-400' :
+                        'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
                 >
                   {day.slice(0, 3)}
                   {planObj.days?.[idx]?.meals?.every(m => m.items?.some(i => i.trim())) && <span className="ml-1">✓</span>}
